@@ -25,6 +25,24 @@ jobs:
       - name: Install package
         run: |
           pip install -e .
+      - name: Collect environment info
+        run: |
+          python -V
+          echo "\n--- PIP LIST ---"
+          pip list
+          echo "\n--- PIP SHOW options-mm / options_mm ---"
+          pip show options-mm || pip show options_mm || true
+          echo "\n--- WORKING DIR ---"
+          ls -la
       - name: Run tests
         run: |
-          pytest -q
+          pytest -vv | tee pytest.log
+          echo $? > pytest_exit_code
+      - name: Upload pytest logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-logs-${{ matrix.python-version }}
+          path: |
+            pytest.log
+            pytest_exit_code
