@@ -22,9 +22,3 @@ Run the demo to compute theoretical prices for sample ticks:
 ```bash
 python scripts/run_phase1.py
 ```
-
-Notes
------
-- I will not push to the remote repository unless you explicitly tell me to.
-- This is a lightweight scaffold intended for rapid extension and unit-tested
-  development.
