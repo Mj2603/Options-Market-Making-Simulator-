@@ -11,7 +11,8 @@ def test_inventory_within_limits():
 def test_inventory_exceeds_limit():
     inv = InventoryManager(max_position=100)
     inv.on_fill("OPT1", 80)
-    assert not inv.would_exceed("OPT1", 30)
+    # additional 30 would exceed the max position of 100
+    assert inv.would_exceed("OPT1", 30)
     inv.on_fill("OPT1", 30)
     assert inv.position("OPT1") == 110
     assert not inv.within_limit("OPT1")
