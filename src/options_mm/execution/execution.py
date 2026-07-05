@@ -4,9 +4,9 @@ from typing import Optional
 
 @dataclass
 class Order:
-    side: str  # 'buy' or 'sell'
+    side: str
     size: float
-    limit_price: Optional[float] = None  # None for market orders
+    limit_price: Optional[float] = None
 
 
 @dataclass
@@ -30,7 +30,6 @@ class ExecutionEngine:
             price = ask if side == "buy" else bid
             return Fill(price=price, size=order.size)
 
-        # limit order
         if side == "buy":
             if order.limit_price >= ask:
                 return Fill(price=ask, size=order.size)

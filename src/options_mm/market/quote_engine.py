@@ -16,7 +16,7 @@ class Quote:
 class QuoteEngine:
     """Simple theoretical quote engine.
 
-    It uses Black–Scholes to compute a theoretical mid and then applies a
+    It uses Black-Scholes to compute a theoretical mid and then applies a
     fixed half-spread to produce bid/ask.
     """
 

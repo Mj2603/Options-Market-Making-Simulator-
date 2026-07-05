@@ -18,7 +18,6 @@ class PnLManager:
         avg = float(state["avg"])
         size = float(size)
 
-        # same direction -> update average price
         if qty == 0.0:
             state["qty"] = size
             state["avg"] = price
@@ -31,20 +30,16 @@ class PnLManager:
             state["avg"] = new_avg
             return
 
-        # opposite direction -> realize PnL for the closed portion
         if abs(size) <= abs(qty):
             closed = abs(size)
-            # for a long position closed by a sell: realized = closed * (sell_price - avg)
             self.realized += closed * (price - avg) * (1.0 if qty > 0 else -1.0)
             state["qty"] = qty + size
             if state["qty"] == 0:
                 state["avg"] = 0.0
             return
 
-        # size magnitude larger than existing -> close existing then open new position
         closed = abs(qty)
         self.realized += closed * (price - avg) * (1.0 if qty > 0 else -1.0)
-        # remaining size opens a new position at the fill price
         remaining = size + qty
         state["qty"] = remaining
         state["avg"] = price
