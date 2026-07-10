@@ -1,13 +1,6 @@
 # Options Market-Making Simulator
 
-A lightweight Python simulator for options market-making research. This repository is organized to support open-source quantitative work with:
-
-- professional README and documentation
-- mathematical derivations
-- unit tests and CI
-- benchmarks and performance plots
-- architecture diagrams
-
+A lightweight Python simulator for options market-making research. 
 ## Project Overview
 
 The package provides a modular research foundation for option pricing, quoting, execution, risk, and hedging:
@@ -66,7 +59,3 @@ This will generate a benchmark plot at `benchmarks/benchmark_performance.png`.
 - `docs/`: research documentation and diagrams
 - `benchmarks/`: performance benchmark scripts and plotting
 - `.github/workflows/ci.yml`: continuous integration pipeline
-
-## Notes
-
-This repository is structured to look like a quant research project with strong documentation, reproducible benchmarks, and a clean modular design.
