@@ -101,6 +101,31 @@ class PortfolioRiskManager:
             by_underlying=by_underlying,
         )
 
+    def delta_hedge_quantity(
+        self, positions: Iterable[OptionRiskPosition]
+    ) -> float:
+        """Return underlying units required to neutralize aggregate option delta."""
+        return -self.aggregate(positions).delta
+
+    @staticmethod
+    def scenario_pnl(
+        exposure: PortfolioExposure,
+        spot_return: float,
+        volatility_point_change: float,
+        days_elapsed: float = 0.0,
+    ) -> float:
+        """Second-order delta/gamma plus vega/theta scenario approximation."""
+        shocks = (spot_return, volatility_point_change, days_elapsed)
+        if not all(math.isfinite(float(value)) for value in shocks):
+            raise ValueError("scenario shocks must be finite")
+        if days_elapsed < 0.0:
+            raise ValueError("days_elapsed must be non-negative")
+        delta_pnl = exposure.delta * spot_return
+        gamma_pnl = 0.5 * exposure.gamma * spot_return**2
+        vega_pnl = exposure.vega * volatility_point_change
+        theta_pnl = exposure.theta * days_elapsed
+        return delta_pnl + gamma_pnl + vega_pnl + theta_pnl
+
     def pre_trade_check(
         self,
         positions: Iterable[OptionRiskPosition],
