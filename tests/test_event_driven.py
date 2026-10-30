@@ -146,3 +146,28 @@ def test_pnl_is_marked_to_last_fair_value():
     assert result.realized_pnl == pytest.approx(0.0)
     assert result.unrealized_pnl == pytest.approx(2.0 * (ask - 9.0))
     assert result.total_pnl == pytest.approx(result.realized_pnl + result.unrealized_pnl)
+
+
+def test_quantity_step_rounds_fill_down_to_valid_lot():
+    result = EventDrivenBacktest(
+        order_size=10.0,
+        participation_rate=1.0,
+        quantity_step=0.25,
+    ).run(
+        [
+            event(1.0),
+            event(
+                2.0,
+                trade_price=0.0,
+                trade_size=1.13,
+                aggressor_side="sell",
+            ),
+        ]
+    )
+    assert len(result.fills) == 1
+    assert result.fills[0].size == pytest.approx(1.0)
+
+
+def test_invalid_quantity_step_is_rejected():
+    with pytest.raises(ValueError, match="quantity_step"):
+        EventDrivenBacktest(quantity_step=0.0)
