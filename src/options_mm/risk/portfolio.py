@@ -39,9 +39,10 @@ class PortfolioRiskManager:
     """Reject trades that breach portfolio Greeks or gross concentration.
 
     Greeks are per option unit; quantity and contract multiplier are applied
-    once. Delta is reported in underlying-share equivalents. Gamma is the
-    second derivative exposure per 1% squared spot move, vega per 1 volatility
-    point, and theta per calendar day when the caller supplies those units.
+    once. Delta is in underlying-share equivalents; gamma is currency P&L per
+    squared one-unit spot move; vega is currency P&L per 1.00 absolute volatility
+    change; theta is currency P&L per calendar day. Supply Greeks in these
+    units consistently across all contracts.
     """
 
     def __init__(
@@ -110,19 +111,19 @@ class PortfolioRiskManager:
     @staticmethod
     def scenario_pnl(
         exposure: PortfolioExposure,
-        spot_return: float,
-        volatility_point_change: float,
+        spot_change: float,
+        volatility_change: float,
         days_elapsed: float = 0.0,
     ) -> float:
         """Second-order delta/gamma plus vega/theta scenario approximation."""
-        shocks = (spot_return, volatility_point_change, days_elapsed)
+        shocks = (spot_change, volatility_change, days_elapsed)
         if not all(math.isfinite(float(value)) for value in shocks):
             raise ValueError("scenario shocks must be finite")
         if days_elapsed < 0.0:
             raise ValueError("days_elapsed must be non-negative")
-        delta_pnl = exposure.delta * spot_return
-        gamma_pnl = 0.5 * exposure.gamma * spot_return**2
-        vega_pnl = exposure.vega * volatility_point_change
+        delta_pnl = exposure.delta * spot_change
+        gamma_pnl = 0.5 * exposure.gamma * spot_change**2
+        vega_pnl = exposure.vega * volatility_change
         theta_pnl = exposure.theta * days_elapsed
         return delta_pnl + gamma_pnl + vega_pnl + theta_pnl
 
