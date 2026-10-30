@@ -15,7 +15,7 @@ The current implementation contains the following research components:
 |---|---|
 | Option pricing | Black–Scholes European call/put prices and first-order/second-order Greeks |
 | Quote construction | Fixed-spread baseline plus an inventory-aware Avellaneda–Stoikov reservation-price model |
-| Execution model | Deterministic order rules plus event-driven trade-print matching with configurable participation and inventory caps |
+| Execution model | Deterministic order rules plus event-driven trade-print matching with configurable participation, discrete quantity steps, and inventory caps |
 | Inventory | Per-instrument position tracking, limit checks, and fill-size caps in the event-driven engine |
 | P&L | Average-cost realized P&L and mark-to-market unrealized P&L |
 | Delta hedging | Net option delta aggregation and theoretical underlying hedge quantity |
