@@ -98,7 +98,7 @@ def to_market_events(frame: pd.DataFrame):
                 gamma=optional_float("gamma"),
                 vega=optional_float("vega"),
                 theta=optional_float("theta"),
-                contract_multiplier=optional_float("contract_multiplier") or 1.0,
+                contract_multiplier=optional_float("contract_multiplier"),
             )
         )
     return events
