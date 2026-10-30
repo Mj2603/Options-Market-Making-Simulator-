@@ -1,61 +1,136 @@
 # Options Market-Making Simulator
 
-A lightweight Python simulator for options market-making research. 
-## Project Overview
+A Python research prototype for studying the core mechanics of options market making: theoretical valuation, quote construction, simplified execution, inventory accounting, P&L attribution, and delta hedging.
 
-The package provides a modular research foundation for option pricing, quoting, execution, risk, and hedging:
+The repository is organized as a modular simulation toolkit. It is intended for quantitative finance experimentation and software development practice—not live trading, broker connectivity, or production execution.
 
-- `src/options_mm/pricing/black_scholes.py`: Black-Scholes pricing and Greeks
-- `src/options_mm/market/quote_engine.py`: theoretical quote generation
-- `src/options_mm/execution/execution.py`: simple order fill model
-- `src/options_mm/risk/inventory.py`: inventory tracking and limits
-- `src/options_mm/metrics/pnl.py`: realized and mark-to-market PnL
-- `src/options_mm/hedge/delta.py`: delta aggregation and hedge sizing
-- `src/options_mm/experiments/regime.py`: volatility regime detection
+[![Python CI](https://github.com/Mj2603/Options-Market-Making-Simulator-/actions/workflows/python-ci.yml/badge.svg)](https://github.com/Mj2603/Options-Market-Making-Simulator-/actions/workflows/python-ci.yml)
+[![CI](https://github.com/Mj2603/Options-Market-Making-Simulator-/actions/workflows/ci.yml/badge.svg)](https://github.com/Mj2603/Options-Market-Making-Simulator-/actions/workflows/ci.yml)
 
-## Getting Started
+## Scope
 
-### Install dependencies
+The current implementation contains the following research components:
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt -r requirements-dev.txt
+| Component | Current functionality |
+|---|---|
+| Option pricing | Black–Scholes European call/put prices and first-order/second-order Greeks |
+| Quote construction | Theoretical option value with a configurable fixed half-spread |
+| Execution model | Deterministic touch/cross fill rules for marketable and limit orders |
+| Inventory | Per-instrument position tracking and limit checks |
+| P&L | Average-cost realized P&L and mark-to-market unrealized P&L |
+| Delta hedging | Net option delta aggregation and theoretical underlying hedge quantity |
+| Volatility regime | Threshold-based classification using the standard deviation of supplied returns |
+| Data ingestion | CSV validation, row-specific time-to-expiry, quote filtering, and mid/spread derivation |
+
+The modules are deliberately separated so that individual models can be tested and replaced as the simulator becomes more realistic.
+
+## Architecture
+
+```text
+CSV observations
+      |
+      v
+Data validation and normalization
+      |
+      v
+Black–Scholes valuation -----> Greeks
+      |                         |
+      v                         v
+Fixed-spread quote engine   Delta hedge sizing
+      |
+      v
+Simplified execution rules
+      |
+      +------> Inventory state
+      |
+      +------> Realized / unrealized P&L
+
+Returns --------------------> Volatility regime label
 ```
 
-### Run tests
+The main package is under `src/options_mm/`:
+
+- `data/` — CSV ingestion and quote-data validation
+- `pricing/` — Black–Scholes pricing and Greeks
+- `market/` — theoretical bid/ask quote construction
+- `execution/` — simplified order-fill rules
+- `risk/` — inventory state and position-limit checks
+- `metrics/` — realized and mark-to-market P&L
+- `hedge/` — net-delta and hedge-quantity calculations
+- `experiments/` — basic volatility-regime experiments
+
+## Installation
+
+Requires Python 3.10 or later.
+
+```bash
+git clone https://github.com/Mj2603/Options-Market-Making-Simulator-.git
+cd Options-Market-Making-Simulator-
+
+python -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+pip install -e ".[parquet]"
+pip install -r requirements-dev.txt
+```
+
+For a CSV-only installation, install the package without the optional Parquet extra:
+
+```bash
+pip install -e .
+```
+
+## Tests
+
+Run the automated test suite from the repository root:
 
 ```bash
 pytest
 ```
 
-### Run the demo
+GitHub Actions currently tests the project on Python 3.10, 3.11, and 3.12. The workflows install the package and test dependencies before running pytest.
 
-```bash
-python scripts/run_phase1.py
+## Market-data contract
+
+The canonical CSV loader expects these columns:
+
+```text
+timestamp, expiry, underlying, strike, bid, ask
 ```
 
-### Run benchmarks
+Optional source fields (for example implied volatility or displayed sizes) are retained. The loader validates required fields and market values, calculates time-to-expiry for each observation, filters crossed and expired quotes, and derives midpoint and quoted spread.
 
-```bash
-python benchmarks/benchmark_simulator.py
-python benchmarks/plot_benchmarks.py
-```
+If `expiry` contains date-only values, pass the contract's actual settlement time through `expiry_time`. Do not assume a universal expiry convention: AM- and PM-settled contracts can have materially different time-to-expiry.
 
-This will generate a benchmark plot at `benchmarks/benchmark_performance.png`.
+No historical market-data file is bundled with this repository. The loader can be tested using the synthetic fixtures in `tests/test_loader.py`. A real-data research run requires a correctly mapped dataset and documented contract metadata.
 
-## Documentation
+## Research limitations
 
-- `docs/architecture.md` - architecture and component diagram
-- `docs/derivations.md` - Black-Scholes derivation and Greeks
-- `docs/benchmark_results.md` - benchmark summaries
+This is an intentionally limited research prototype. In particular:
 
-## Repository Structure
+- The quote engine applies a fixed spread; it does not yet optimize quotes for inventory, adverse selection, volatility, or market conditions.
+- The execution model is deterministic and does not simulate queue priority, order-book depth, partial fills, latency, cancellations, or market impact.
+- Inventory limits are exposed as checks; the current execution flow does not provide a complete pre-trade risk-control layer.
+- P&L accounting is simplified and does not yet include exchange fees, rebates, contract multipliers, funding, exercise/assignment, or corporate actions.
+- The pricing implementation is Black–Scholes only; it does not calibrate an implied-volatility surface or model stochastic volatility.
+- The regime detector is a simple threshold baseline, not a validated forecasting model.
+- A passing unit-test suite verifies the tested software behavior. It does not establish trading profitability, execution quality, or production readiness.
 
-- `src/options_mm/`: core simulator package
-- `data/`: sample tick dataset
-- `scripts/`: example demo runner
-- `tests/`: unit and benchmark tests
-- `docs/`: research documentation and diagrams
-- `benchmarks/`: performance benchmark scripts and plotting
-- `.github/workflows/ci.yml`: continuous integration pipeline
+Consequently, the project should not be connected to a live brokerage account or used to make trading decisions.
+
+## Roadmap
+
+The next engineering priorities are:
+
+1. Add explicit input-domain validation and numerical edge-case tests to pricing and quoting.
+2. Introduce a reproducible event-driven simulation loop with clear event ordering and state transitions.
+3. Add inventory-aware quoting and pre-trade risk controls.
+4. Replace deterministic fills with configurable fill, partial-fill, and latency models; add queue-aware execution only when suitable order-book data is available.
+5. Add transaction costs, contract multipliers, and independently reconciled P&L.
+6. Build walk-forward experiments with benchmark policies, parameter controls, and leakage-safe evaluation.
+7. Add structured logging, configuration, data provenance, and reproducible experiment outputs.
+
+## Project status
+
+The project is under active development as a quantitative research and engineering portfolio project. The current goal is correctness, transparency of assumptions, and reproducibility—not a claim of institutional-grade or production trading infrastructure.
