@@ -48,7 +48,7 @@ class MarketEvent:
     gamma: float | None = None
     vega: float | None = None
     theta: float | None = None
-    contract_multiplier: float = 1.0
+    contract_multiplier: float | None = None
 
     def __post_init__(self) -> None:
         numeric = {
@@ -59,7 +59,6 @@ class MarketEvent:
             "trade_size": self.trade_size,
             "market_bid_size": self.market_bid_size,
             "market_ask_size": self.market_ask_size,
-            "contract_multiplier": self.contract_multiplier,
         }
         for name, value in numeric.items():
             try:
@@ -82,8 +81,14 @@ class MarketEvent:
             raise ValueError("trade_size must be non-negative")
         if self.market_bid_size < 0.0 or self.market_ask_size < 0.0:
             raise ValueError("market quote sizes must be non-negative")
-        if self.contract_multiplier <= 0.0:
-            raise ValueError("contract_multiplier must be positive")
+        if self.contract_multiplier is not None:
+            try:
+                multiplier = float(self.contract_multiplier)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("contract_multiplier must be positive and finite") from exc
+            if not math.isfinite(multiplier) or multiplier <= 0.0:
+                raise ValueError("contract_multiplier must be positive and finite")
+            object.__setattr__(self, "contract_multiplier", multiplier)
         if (self.market_bid is None) != (self.market_ask is None):
             raise ValueError("market_bid and market_ask must be supplied together")
         if self.market_bid is not None:
@@ -248,6 +253,15 @@ class EventDrivenBacktest:
             raise ValueError(f"{name} must be finite and positive")
         return number
 
+    def _effective_contract_multiplier(self, event: MarketEvent) -> float:
+        configured = self.pnl.contract_multipliers.get(event.instrument)
+        supplied = event.contract_multiplier
+        if configured is not None and supplied is not None and not math.isclose(
+            configured, supplied, rel_tol=0.0, abs_tol=1e-12
+        ):
+            raise ValueError("event contract multiplier conflicts with PnL configuration")
+        return configured if configured is not None else supplied if supplied is not None else 1.0
+
     def _approve_portfolio_risk(
         self, event: MarketEvent, signed_size: float
     ) -> bool:
@@ -264,7 +278,7 @@ class EventDrivenBacktest:
             instrument=event.instrument,
             underlying=event.underlying,
             quantity=signed_size,
-            multiplier=event.contract_multiplier,
+            multiplier=self._effective_contract_multiplier(event),
             delta=event.delta,
             gamma=event.gamma,
             vega=event.vega,
@@ -352,13 +366,9 @@ class EventDrivenBacktest:
         if queue_trial is not None:
             queue_trial.remaining_size += maximum_fill - fill_size
             queue_positions[our_side] = queue_trial
-        existing_multiplier = self.pnl.contract_multipliers.get(event.instrument)
-        if existing_multiplier is not None and not math.isclose(
-            existing_multiplier, event.contract_multiplier, rel_tol=0.0, abs_tol=1e-12
-        ):
-            raise ValueError("event contract multiplier conflicts with PnL configuration")
+        effective_multiplier = self._effective_contract_multiplier(event)
         self.pnl.contract_multipliers.setdefault(
-            event.instrument, event.contract_multiplier
+            event.instrument, effective_multiplier
         )
         self.inventory.on_fill(event.instrument, signed_size)
         self.pnl.record_fill(event.instrument, fill_price, signed_size)
@@ -409,7 +419,11 @@ class EventDrivenBacktest:
                         instrument=event.instrument,
                         underlying=event.underlying or current_risk.underlying,
                         quantity=current_risk.quantity,
-                        multiplier=event.contract_multiplier,
+                        multiplier=(
+                            event.contract_multiplier
+                            if event.contract_multiplier is not None
+                            else current_risk.multiplier
+                        ),
                         delta=event.delta,
                         gamma=event.gamma,
                         vega=event.vega,
