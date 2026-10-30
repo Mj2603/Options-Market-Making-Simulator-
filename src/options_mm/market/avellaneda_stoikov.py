@@ -102,17 +102,30 @@ class AvellanedaStoikovQuoteModel:
             raise ValueError("time_to_horizon must be non-negative")
 
         gamma = self.risk_aversion
-        sigma_squared_horizon = price_volatility**2 * time_to_horizon
-        reservation_price = (
-            fair_value - inventory * gamma * sigma_squared_horizon
-        )
-        half_spread = (
-            0.5 * gamma * sigma_squared_horizon
-            + math.log1p(gamma / self.order_arrival_intensity) / gamma
-        )
+        try:
+            sigma_squared_horizon = price_volatility**2 * time_to_horizon
+            reservation_price = (
+                fair_value - inventory * gamma * sigma_squared_horizon
+            )
+            arrival_term = math.log1p(
+                gamma / self.order_arrival_intensity
+            ) / gamma
+            half_spread = (
+                0.5 * gamma * sigma_squared_horizon + arrival_term
+            )
+        except (OverflowError, ValueError) as exc:
+            raise ValueError("model inputs produce an unstable quote") from exc
+
+        if not all(
+            math.isfinite(value)
+            for value in (reservation_price, half_spread)
+        ):
+            raise ValueError("model inputs produce a non-finite quote")
 
         raw_bid = reservation_price - half_spread
         raw_ask = reservation_price + half_spread
+        if not math.isfinite(raw_bid) or not math.isfinite(raw_ask):
+            raise ValueError("model inputs produce a non-finite quote")
         bid = max(0.0, raw_bid)
         ask = max(bid, raw_ask)
 
