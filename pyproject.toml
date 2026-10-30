@@ -14,5 +14,8 @@ dependencies = [
     "scipy>=1.10,<2.0",
 ]
 
+[project.optional-dependencies]
+parquet = ["pyarrow>=14.0.1"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
