@@ -99,7 +99,14 @@ class SimulationResult:
     final_positions: tuple[tuple[str, float], ...]
     realized_pnl: float
     unrealized_pnl: float
-    total_pnl: float
+    fees_paid: float
+    gross_total_pnl: float
+    net_total_pnl: float
+
+    @property
+    def total_pnl(self) -> float:
+        """Net P&L after commissions."""
+        return self.net_total_pnl
 
 
 class EventDrivenBacktest:
@@ -276,5 +283,7 @@ class EventDrivenBacktest:
             final_positions=tuple(sorted(self.inventory.positions.items())),
             realized_pnl=float(self.pnl.realized),
             unrealized_pnl=float(unrealized),
-            total_pnl=float(self.pnl.realized + unrealized),
+            fees_paid=float(self.pnl.fees_paid),
+            gross_total_pnl=float(self.pnl.realized + unrealized),
+            net_total_pnl=float(self.pnl.realized + unrealized - self.pnl.fees_paid),
         )
