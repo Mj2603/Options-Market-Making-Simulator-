@@ -11,6 +11,7 @@ from options_mm.calibration import ArrivalCalibration, calibrate_exponential_arr
 from options_mm.execution.queue import L1QueueModel
 from options_mm.market.avellaneda_stoikov import AvellanedaStoikovQuoteModel
 from options_mm.market.policies import FixedSpreadQuoteModel
+from options_mm.metrics.pnl import PnLManager
 from options_mm.metrics.research import performance_summary
 from options_mm.simulation.event_driven import EventDrivenBacktest, MarketEvent
 
@@ -24,6 +25,7 @@ class WalkForwardFold:
     test_end: float
     arrival_calibration: ArrivalCalibration
     selected_risk_aversion: float
+    selected_fixed_half_spread: float
     fixed_spread_metrics: dict
     inventory_aware_metrics: dict
 
@@ -45,6 +47,8 @@ def _select_gamma(
     order_size: float,
     participation_rate: float,
     inventory_penalty: float,
+    queue_model,
+    commission_per_contract: float,
 ) -> float:
     best_gamma = None
     best_score = -math.inf
@@ -58,6 +62,7 @@ def _select_gamma(
             order_size=order_size,
             participation_rate=participation_rate,
             queue_model=queue_model,
+            pnl_manager=PnLManager(commission_per_contract=commission_per_contract),
         ).run(training_events)
         score = result.net_total_pnl - inventory_penalty * _inventory_penalty(result)
         if score > best_score:
@@ -67,6 +72,34 @@ def _select_gamma(
     return float(best_gamma)
 
 
+
+def _select_fixed_spread(
+    training_events: list[MarketEvent],
+    spread_grid: tuple[float, ...],
+    order_size: float,
+    participation_rate: float,
+    inventory_penalty: float,
+    queue_model,
+    commission_per_contract: float,
+) -> float:
+    best_spread = None
+    best_score = -math.inf
+    for spread in spread_grid:
+        result = EventDrivenBacktest(
+            quote_model=FixedSpreadQuoteModel(spread),
+            order_size=order_size,
+            participation_rate=participation_rate,
+            queue_model=queue_model,
+            pnl_manager=PnLManager(commission_per_contract=commission_per_contract),
+        ).run(training_events)
+        score = result.net_total_pnl - inventory_penalty * _inventory_penalty(result)
+        if score > best_score:
+            best_score, best_spread = score, spread
+    if best_spread is None:
+        raise RuntimeError("fixed-spread grid did not produce a valid model")
+    return float(best_spread)
+
+
 def walk_forward_compare(
     events: Iterable[MarketEvent],
     arrival_observations: pd.DataFrame,
@@ -74,11 +107,13 @@ def walk_forward_compare(
     train_fraction: float = 0.6,
     risk_aversion_grid: tuple[float, ...] = (0.01, 0.03, 0.1, 0.3, 1.0),
     fixed_half_spread: float = 0.05,
+    fixed_spread_grid: tuple[float, ...] = (0.01, 0.02, 0.05, 0.1, 0.2),
     order_size: float = 10.0,
     participation_rate: float = 0.1,
     inventory_penalty: float = 0.01,
     latency_seconds: float = 0.0,
     queue_aware: bool = False,
+    commission_per_contract: float = 0.65,
 ) -> list[WalkForwardFold]:
     """Run expanding-window tests with calibration/tuning restricted to train.
 
@@ -93,10 +128,17 @@ def walk_forward_compare(
         raise ValueError("inventory_penalty must be finite and non-negative")
     if not math.isfinite(latency_seconds) or latency_seconds < 0.0:
         raise ValueError("latency_seconds must be finite and non-negative")
-    if queue_aware and any(
+    if (queue_aware or latency_seconds > 0.0) and any(
         event.market_bid is None or event.market_ask is None for event in ordered
     ):
-        raise ValueError("queue_aware requires NBBO bid/ask on every event")
+        raise ValueError("queue/latency simulation requires NBBO bid/ask on every event")
+    if not math.isfinite(commission_per_contract) or commission_per_contract < 0.0:
+        raise ValueError("commission_per_contract must be finite and non-negative")
+    if not fixed_spread_grid or any(
+        not math.isfinite(float(spread)) or spread < 0.0
+        for spread in fixed_spread_grid
+    ):
+        raise ValueError("fixed_spread_grid must contain non-negative finite values")
     queue_model = (
         L1QueueModel(latency_seconds=latency_seconds)
         if queue_aware or latency_seconds > 0.0 else None
@@ -152,13 +194,25 @@ def walk_forward_compare(
             order_size,
             participation_rate,
             inventory_penalty,
+            queue_model,
+            commission_per_contract,
+        )
+        selected_spread = _select_fixed_spread(
+            train_events,
+            fixed_spread_grid,
+            order_size,
+            participation_rate,
+            inventory_penalty,
+            queue_model,
+            commission_per_contract,
         )
 
         fixed_result = EventDrivenBacktest(
-            quote_model=FixedSpreadQuoteModel(fixed_half_spread),
+            quote_model=FixedSpreadQuoteModel(selected_spread),
             order_size=order_size,
             participation_rate=participation_rate,
             queue_model=queue_model,
+            pnl_manager=PnLManager(commission_per_contract=commission_per_contract),
         ).run(test_events)
         as_result = EventDrivenBacktest(
             quote_model=AvellanedaStoikovQuoteModel(
@@ -167,6 +221,8 @@ def walk_forward_compare(
             ),
             order_size=order_size,
             participation_rate=participation_rate,
+            queue_model=queue_model,
+            pnl_manager=PnLManager(commission_per_contract=commission_per_contract),
         ).run(test_events)
         folds.append(
             WalkForwardFold(
@@ -177,6 +233,7 @@ def walk_forward_compare(
                 test_end=test_end,
                 arrival_calibration=calibration,
                 selected_risk_aversion=gamma,
+                selected_fixed_half_spread=selected_spread,
                 fixed_spread_metrics=performance_summary(fixed_result, test_events),
                 inventory_aware_metrics=performance_summary(as_result, test_events),
             )
