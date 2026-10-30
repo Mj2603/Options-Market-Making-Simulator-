@@ -40,10 +40,10 @@ def compute_markouts(
             values.append(signed_markout(fill.side, fill.price, future.fair_value))
         output[float(horizon)] = {
             "count": len(values),
-            "mean": float(np.mean(values)) if values else float("nan"),
-            "median": float(np.median(values)) if values else float("nan"),
+            "mean": float(np.mean(values)) if values else None,
+            "median": float(np.median(values)) if values else None,
             "adverse_selection_rate": (
-                float(np.mean(np.asarray(values) < 0.0)) if values else float("nan")
+                float(np.mean(np.asarray(values) < 0.0)) if values else None
             ),
         }
     return output
@@ -124,7 +124,7 @@ def performance_summary(
             float(np.mean(inventory_path)) if inventory_path else 0.0
         ),
         "final_gross_abs_inventory": float(positions.sum()),
-        "markout_1s": float(markouts.get(1.0, {}).get("mean", float("nan"))),
-        "markout_5s": float(markouts.get(5.0, {}).get("mean", float("nan"))),
-        "markout_30s": float(markouts.get(30.0, {}).get("mean", float("nan"))),
+        "markout_1s": markouts.get(1.0, {}).get("mean"),
+        "markout_5s": markouts.get(5.0, {}).get("mean"),
+        "markout_30s": markouts.get(30.0, {}).get("mean"),
     }
