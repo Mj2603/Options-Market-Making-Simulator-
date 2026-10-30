@@ -50,6 +50,7 @@ class PortfolioRiskManager:
         max_abs_delta: float = math.inf,
         max_abs_gamma: float = math.inf,
         max_abs_vega: float = math.inf,
+        max_abs_theta: float = math.inf,
         max_gross_market_value: float = math.inf,
         max_underlying_gross_value: float = math.inf,
     ):
@@ -57,6 +58,7 @@ class PortfolioRiskManager:
             "max_abs_delta": max_abs_delta,
             "max_abs_gamma": max_abs_gamma,
             "max_abs_vega": max_abs_vega,
+            "max_abs_theta": max_abs_theta,
             "max_gross_market_value": max_gross_market_value,
             "max_underlying_gross_value": max_underlying_gross_value,
         }
@@ -139,6 +141,7 @@ class PortfolioRiskManager:
             (abs(projected.delta) <= self.max_abs_delta, "portfolio delta limit"),
             (abs(projected.gamma) <= self.max_abs_gamma, "portfolio gamma limit"),
             (abs(projected.vega) <= self.max_abs_vega, "portfolio vega limit"),
+            (abs(projected.theta) <= self.max_abs_theta, "portfolio theta limit"),
             (projected.gross_market_value <= self.max_gross_market_value, "gross market value limit"),
             (
                 projected.by_underlying.get(proposed.underlying, 0.0)
