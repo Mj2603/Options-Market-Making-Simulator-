@@ -171,3 +171,48 @@ def test_quantity_step_rounds_fill_down_to_valid_lot():
 def test_invalid_quantity_step_is_rejected():
     with pytest.raises(ValueError, match="quantity_step"):
         EventDrivenBacktest(quantity_step=0.0)
+
+
+def test_first_event_cannot_fill_against_a_quote_not_yet_posted():
+    result = EventDrivenBacktest().run(
+        [
+            event(
+                1.0,
+                trade_price=0.0,
+                trade_size=100.0,
+                aggressor_side="sell",
+            )
+        ]
+    )
+    assert result.fills == ()
+
+
+def test_inventory_limit_also_caps_sell_fills_for_short_positions():
+    inventory = InventoryManager(max_position=3.0)
+    inventory.on_fill("OPT-100-C", -2.0)
+    model = AvellanedaStoikovQuoteModel()
+    ask = model.quote(10.0, -2.0, 0.5, 0.25).ask
+    result = EventDrivenBacktest(
+        inventory_manager=inventory,
+        order_size=10.0,
+        participation_rate=1.0,
+    ).run(
+        [
+            event(1.0),
+            event(
+                2.0,
+                trade_price=ask,
+                trade_size=100.0,
+                aggressor_side="buy",
+            ),
+        ]
+    )
+    assert len(result.fills) == 1
+    assert result.fills[0].side == "sell"
+    assert result.fills[0].size == pytest.approx(1.0)
+    assert dict(result.final_positions)["OPT-100-C"] == pytest.approx(-3.0)
+
+
+def test_non_finite_market_event_timestamp_is_rejected():
+    with pytest.raises(ValueError, match="timestamp"):
+        event(float("nan"))
