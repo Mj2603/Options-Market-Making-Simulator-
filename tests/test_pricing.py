@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from options_mm.pricing.black_scholes import call_price_greeks, put_price_greeks
@@ -12,7 +14,7 @@ def test_call_put_parity():
     call = call_price_greeks(S, K, r, sigma, T)
     put = put_price_greeks(S, K, r, sigma, T)
     assert call.price - put.price == pytest.approx(
-        S - K * __import__("math").exp(-r * T), abs=1e-10
+        S - K * math.exp(-r * T), abs=1e-10
     )
 
 
