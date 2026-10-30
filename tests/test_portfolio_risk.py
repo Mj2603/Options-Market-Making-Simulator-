@@ -67,10 +67,9 @@ def test_delta_hedging_is_separated_by_underlying():
         pos(instrument="MSFT-C", underlying="MSFT", quantity=-1.0, delta=0.5),
     ]
     risk = PortfolioRiskManager()
-    assert risk.delta_hedge_quantities(positions) == {
-        "AAPL": pytest.approx(-50.0),
-        "MSFT": pytest.approx(50.0),
-    }
+    hedges = risk.delta_hedge_quantities(positions)
+    assert hedges["AAPL"] == pytest.approx(-50.0)
+    assert hedges["MSFT"] == pytest.approx(50.0)
     with pytest.raises(ValueError, match="multi-underlying"):
         risk.delta_hedge_quantity(positions)
 
