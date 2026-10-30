@@ -84,6 +84,7 @@ def _select_fixed_spread(
     inventory_penalty: float,
     queue_model,
     commission_per_contract: float,
+    portfolio_risk_manager: PortfolioRiskManager | None,
 ) -> float:
     best_spread = None
     best_score = -math.inf
@@ -94,6 +95,7 @@ def _select_fixed_spread(
             participation_rate=participation_rate,
             queue_model=queue_model,
             pnl_manager=PnLManager(commission_per_contract=commission_per_contract),
+            portfolio_risk_manager=portfolio_risk_manager,
         ).run(training_events)
         score = result.net_total_pnl - inventory_penalty * _inventory_penalty(result)
         if score > best_score:
@@ -229,6 +231,7 @@ def walk_forward_compare(
             participation_rate=participation_rate,
             queue_model=queue_model,
             pnl_manager=PnLManager(commission_per_contract=commission_per_contract),
+            portfolio_risk_manager=portfolio_risk_manager,
         ).run(test_events)
         folds.append(
             WalkForwardFold(
