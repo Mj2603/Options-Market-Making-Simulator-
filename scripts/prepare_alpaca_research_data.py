@@ -99,25 +99,25 @@ def prepare_events(
     }
 
     quote_rows = []
-    for row in quotes.itertuples(index=False):
-        underlying, expiry_local, option_type, strike = metadata[row.symbol]
-        tte = (expiry_local.astimezone(ZoneInfo("UTC")) - row.timestamp).total_seconds() / (365.25 * 86400.0)
+    for _, row in quotes.iterrows():
+        underlying, expiry_local, option_type, strike = metadata[row["symbol"]]
+        tte = (expiry_local.astimezone(ZoneInfo("UTC")) - row["timestamp"]).total_seconds() / (365.25 * 86400.0)
         if tte <= 0:
             continue
         quote_rows.append({
-            "timestamp": row.timestamp,
-            "instrument": row.symbol,
+            "timestamp": row["timestamp"],
+            "instrument": row["symbol"],
             "underlying": underlying,
             "option_type": option_type,
             "strike": strike,
             "expiry": expiry_local.isoformat(),
-            "fair_value": row.mid,
-            "price_volatility": row.price_volatility,
+            "fair_value": row["mid"],
+            "price_volatility": row["price_volatility"],
             "time_to_horizon": tte,
-            "market_bid": row.bp,
-            "market_ask": row.ap,
-            "market_bid_size": row.bs,
-            "market_ask_size": row._as if hasattr(row, "_as") else getattr(row, "as"),
+            "market_bid": row["bp"],
+            "market_ask": row["ap"],
+            "market_bid_size": row["bs"],
+            "market_ask_size": row["as"],
             "trade_price": np.nan,
             "trade_size": 0.0,
             "aggressor_side": "",
@@ -148,37 +148,37 @@ def prepare_events(
             tolerance=pd.Timedelta(seconds=quote_tolerance_seconds),
         ).dropna(subset=["mid", "price_volatility"])
         previous_price = None
-        for row in merged.itertuples(index=False):
-            if row.p > row.mid:
+        for _, row in merged.iterrows():
+            if row["p"] > row["mid"]:
                 side = "buy"
-            elif row.p < row.mid:
+            elif row["p"] < row["mid"]:
                 side = "sell"
-            elif previous_price is not None and row.p != previous_price:
-                side = "buy" if row.p > previous_price else "sell"
+            elif previous_price is not None and row["p"] != previous_price:
+                side = "buy" if row["p"] > previous_price else "sell"
             else:
-                previous_price = row.p
+                previous_price = row["p"]
                 continue
-            previous_price = row.p
+            previous_price = row["p"]
             underlying, expiry_local, option_type, strike = metadata[symbol]
-            tte = (expiry_local.astimezone(ZoneInfo("UTC")) - row.timestamp).total_seconds() / (365.25 * 86400.0)
+            tte = (expiry_local.astimezone(ZoneInfo("UTC")) - row["timestamp"]).total_seconds() / (365.25 * 86400.0)
             if tte <= 0:
                 continue
             trade_events.append({
-                "timestamp": row.timestamp,
+                "timestamp": row["timestamp"],
                 "instrument": symbol,
                 "underlying": underlying,
                 "option_type": option_type,
                 "strike": strike,
                 "expiry": expiry_local.isoformat(),
-                "fair_value": row.mid,
-                "price_volatility": row.price_volatility,
+                "fair_value": row["mid"],
+                "price_volatility": row["price_volatility"],
                 "time_to_horizon": tte,
-                "market_bid": row.bp,
-                "market_ask": row.ap,
-                "market_bid_size": row.bs,
-                "market_ask_size": getattr(row, "as"),
-                "trade_price": row.p,
-                "trade_size": row.s,
+                "market_bid": row["bp"],
+                "market_ask": row["ap"],
+                "market_bid_size": row["bs"],
+                "market_ask_size": row["as"],
+                "trade_price": row["p"],
+                "trade_size": row["s"],
                 "aggressor_side": side,
                 "contract_multiplier": contract_multiplier,
                 "data_feed_note": "Aggressor side inferred from midpoint/tick rule",
