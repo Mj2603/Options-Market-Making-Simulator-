@@ -15,5 +15,4 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src", "."]
-include = ["options_mm*", "benchmarks*"]
+where = ["src"]
