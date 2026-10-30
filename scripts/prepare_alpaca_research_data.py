@@ -147,6 +147,9 @@ def prepare_events(
             direction="backward",
             tolerance=pd.Timedelta(seconds=quote_tolerance_seconds),
         ).dropna(subset=["mid", "price_volatility"])
+        # Equal timestamps have no reliable sequence ordering; exclude them
+        # rather than allowing a quote to be used for a simultaneous trade.
+        merged = merged.loc[merged["quote_timestamp"] < merged["timestamp"]]
         previous_price = None
         for _, row in merged.iterrows():
             if row["p"] > row["mid"]:
