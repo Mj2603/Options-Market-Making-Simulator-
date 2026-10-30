@@ -279,3 +279,33 @@ def test_simulation_result_reports_gross_and_net_pnl():
     assert result.gross_total_pnl == pytest.approx(200.0 * (ask - 9.0))
     assert result.net_total_pnl == pytest.approx(result.gross_total_pnl - 1.0)
     assert result.total_pnl == pytest.approx(result.net_total_pnl)
+
+
+def test_portfolio_risk_manager_blocks_fill_before_inventory_changes():
+    from options_mm.risk.portfolio import PortfolioRiskManager
+
+    risk = PortfolioRiskManager(max_abs_delta=10.0)
+    first = event(1.0)
+    second = event(
+        2.0,
+        trade_price=0.0,
+        trade_size=1.0,
+        aggressor_side="sell",
+    )
+    first = MarketEvent(
+        **{**first.__dict__, "underlying": "AAPL", "delta": 0.5,
+           "gamma": 0.01, "vega": 0.1, "theta": -0.01,
+           "contract_multiplier": 100.0}
+    )
+    second = MarketEvent(
+        **{**second.__dict__, "underlying": "AAPL", "delta": 0.5,
+           "gamma": 0.01, "vega": 0.1, "theta": -0.01,
+           "contract_multiplier": 100.0}
+    )
+    result = EventDrivenBacktest(
+        portfolio_risk_manager=risk,
+        order_size=1.0,
+        participation_rate=1.0,
+    ).run([first, second])
+    assert result.fills == ()
+    assert dict(result.final_positions).get("OPT-100-C", 0.0) == 0.0
