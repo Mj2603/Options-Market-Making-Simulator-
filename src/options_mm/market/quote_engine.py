@@ -22,13 +22,17 @@ class QuoteEngine:
 
     def __init__(self, half_spread: float = 0.05):
         self.half_spread = float(half_spread)
+        if not np.isfinite(self.half_spread) or self.half_spread < 0:
+            raise ValueError("half_spread must be finite and non-negative")
 
-    def theoretical_price(self, S: float, K: float, r: float, sigma: float, T: float, option_type: Literal['call', 'put']='call') -> float:
-        if option_type == 'call':
+    def theoretical_price(self, S: float, K: float, r: float, sigma: float, T: float, option_type: Literal["call", "put"] = "call") -> float:
+        if option_type == "call":
             return call_price_greeks(S, K, r, sigma, T).price
-        return put_price_greeks(S, K, r, sigma, T).price
+        if option_type == "put":
+            return put_price_greeks(S, K, r, sigma, T).price
+        raise ValueError("option_type must be 'call' or 'put'")
 
-    def quote(self, S: float, K: float, r: float, sigma: float, T: float, option_type: Literal['call', 'put']='call') -> Quote:
+    def quote(self, S: float, K: float, r: float, sigma: float, T: float, option_type: Literal["call", "put"] = "call") -> Quote:
         mid = float(self.theoretical_price(S, K, r, sigma, T, option_type))
         bid = max(0.0, mid - self.half_spread)
         ask = mid + self.half_spread
