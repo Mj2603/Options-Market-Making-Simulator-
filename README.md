@@ -131,11 +131,11 @@ The next engineering priorities are:
 
 1. Extend risk controls to all order-entry paths and add portfolio-level Greeks and concentration limits.
 2. Calibrate quote-model parameters on training data and evaluate them out of sample against the fixed-spread baseline.
-3. Add transaction costs, contract multipliers, and independently reconciled net P&L.
-4. Add realistic order-book replay, queue priority, cancellations, and latency only when suitable message-level data is available.
-5. Build walk-forward experiments with benchmark policies, parameter controls, and leakage-safe evaluation.
-6. Add structured logging, configuration, data provenance, and reproducible experiment outputs.
-7. Add option-surface calibration and dynamic volatility inputs before claiming options-specific market-making performance.
+3. Add realistic order-book replay, queue priority, cancellations, and latency only when suitable message-level data is available.
+4. Build walk-forward experiments with benchmark policies, parameter controls, and leakage-safe evaluation.
+5. Add structured logging, configuration, data provenance, and reproducible experiment outputs.
+6. Add option-surface calibration and dynamic volatility inputs before claiming options-specific market-making performance.
+7. Add funding, rebates, exercise/assignment cash flows, and corporate-action handling where relevant to the selected contracts.
 
 ## Project status
 
