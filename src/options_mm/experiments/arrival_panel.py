@@ -58,7 +58,7 @@ def build_arrival_panel(
                 else start + pd.Timedelta(seconds=max_quote_age_seconds)
             )
             end = min(next_time, start + pd.Timedelta(seconds=max_quote_age_seconds))
-            lo = np.searchsorted(trade_times, start.value, side="left")
+            lo = np.searchsorted(trade_times, start.value, side="right")
             hi = np.searchsorted(trade_times, end.value, side="left")
             prices = trade_prices[lo:hi]
             sizes = trade_sizes[lo:hi]
