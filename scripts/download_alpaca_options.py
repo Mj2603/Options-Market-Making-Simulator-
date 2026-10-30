@@ -8,6 +8,7 @@ import argparse
 import csv
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -100,8 +101,27 @@ def main():
         trades,
         ["symbol", "t", "p", "s", "x", "c"],
     )
+    metadata = {
+        "provider": "Alpaca historical options market data",
+        "feed": args.feed,
+        "symbols": symbols,
+        "start": args.start,
+        "end": args.end,
+        "downloaded_at_utc": datetime.now(timezone.utc).isoformat(),
+        "quotes_file": "quotes.csv",
+        "trades_file": "trades.csv",
+        "historical_availability": "February 2024 onward",
+        "feed_warning": (
+            "Indicative data are modified derivatives of OPRA and trades are delayed 15 minutes."
+            if args.feed == "indicative"
+            else "OPRA feed access requires an eligible subscription."
+        ),
+    }
+    (args.output_dir / "metadata.json").write_text(
+        json.dumps(metadata, indent=2), encoding="utf-8"
+    )
     print(f"Downloaded {quote_count} quote records and {trade_count} trade records.")
-    print(f"Feed: {args.feed}. Treat indicative records as indicative, not OPRA quotes.")
+    print(f"Feed: {args.feed}. See metadata.json for provenance and feed caveats.")
 
 
 if __name__ == "__main__":
