@@ -93,6 +93,15 @@ class FillEvent:
 
 
 @dataclass(frozen=True)
+class EquityPoint:
+    timestamp: float
+    realized_pnl: float
+    unrealized_pnl: float
+    fees_paid: float
+    net_pnl: float
+
+
+@dataclass(frozen=True)
 class SimulationResult:
     fills: tuple[FillEvent, ...]
     final_quotes: tuple[tuple[str, InventoryAwareQuote], ...]
@@ -102,6 +111,7 @@ class SimulationResult:
     fees_paid: float
     gross_total_pnl: float
     net_total_pnl: float
+    equity_curve: tuple[EquityPoint, ...] = ()
 
     @property
     def total_pnl(self) -> float:
@@ -238,6 +248,7 @@ class EventDrivenBacktest:
         resting_quotes: dict[str, InventoryAwareQuote] = {}
         last_fair_values: dict[str, float] = {}
         fills: list[FillEvent] = []
+        equity_curve: list[EquityPoint] = []
         previous_timestamp: float | None = None
 
         for event in events:
@@ -263,6 +274,18 @@ class EventDrivenBacktest:
                 price_volatility=event.price_volatility,
                 time_to_horizon=event.time_to_horizon,
             )
+            unrealized_now = self.pnl.mark_to_market(last_fair_values)
+            equity_curve.append(
+                EquityPoint(
+                    timestamp=event.timestamp,
+                    realized_pnl=float(self.pnl.realized),
+                    unrealized_pnl=float(unrealized_now),
+                    fees_paid=float(self.pnl.fees_paid),
+                    net_pnl=float(
+                        self.pnl.realized + unrealized_now - self.pnl.fees_paid
+                    ),
+                )
+            )
 
         unmarked_positions = [
             instrument
@@ -286,4 +309,5 @@ class EventDrivenBacktest:
             fees_paid=float(self.pnl.fees_paid),
             gross_total_pnl=float(self.pnl.realized + unrealized),
             net_total_pnl=float(self.pnl.realized + unrealized - self.pnl.fees_paid),
+            equity_curve=tuple(equity_curve),
         )
