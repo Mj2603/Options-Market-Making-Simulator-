@@ -36,9 +36,12 @@ A buy-aggressor trade at or above our resting ask is eligible to fill our ask.
 A sell-aggressor trade at or below our resting bid is eligible to fill our bid.
 The simulated fill occurs at our resting quote price.
 
-Eligible fill size is:
+Eligible fill size is rounded down to the configured quantity step after applying:
 
     min(order_size, trade_size * participation_rate, inventory_headroom)
+
+The default quantity step is one contract. Smaller steps can be configured for
+instruments that support fractional quantities.
 
 This is a deliberately simplified participation model. A consolidated trade
 print does not reveal how much volume was available at our queue position.
