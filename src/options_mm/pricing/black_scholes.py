@@ -48,17 +48,27 @@ def _discount_factor(r: float, T: float) -> float:
     try:
         discount = math.exp(-r * T)
     except OverflowError as exc:
-        raise ValueError("rate and maturity produce an unstable discount factor") from exc
+        raise ValueError(
+            "rate and maturity produce an unstable discount factor"
+        ) from exc
     if not math.isfinite(discount):
         raise ValueError("rate and maturity produce a non-finite discount factor")
     return discount
 
 
-def _result(price: float, delta: float, gamma: float, vega: float, theta: float) -> OptionGreeks:
+def _result(
+    price: float, delta: float, gamma: float, vega: float, theta: float
+) -> OptionGreeks:
     values = (price, delta, gamma, vega, theta)
     if not all(math.isfinite(value) for value in values):
         raise ValueError("inputs produce non-finite Black-Scholes output")
-    return _result(price, delta, gamma, vega, theta)
+    return OptionGreeks(
+        price=float(price),
+        delta=float(delta),
+        gamma=float(gamma),
+        vega=float(vega),
+        theta=float(theta),
+    )
 
 
 def _deterministic_greeks(
@@ -68,27 +78,20 @@ def _deterministic_greeks(
     discounted_strike = K * _discount_factor(r, T) if T > 0.0 else K
     if option_type == "call":
         intrinsic = max(S - discounted_strike, 0.0)
-        if S > discounted_strike:
-            delta = 1.0
-        elif S < discounted_strike:
-            delta = 0.0
-        else:
+        delta = 1.0 if S > discounted_strike else 0.0
+        if S == discounted_strike:
             delta = 0.5
     else:
         intrinsic = max(discounted_strike - S, 0.0)
-        if S < discounted_strike:
-            delta = -1.0
-        elif S > discounted_strike:
-            delta = 0.0
-        else:
+        delta = -1.0 if S < discounted_strike else 0.0
+        if S == discounted_strike:
             delta = -0.5
     return _result(intrinsic, delta, 0.0, 0.0, 0.0)
 
 
 def _d1(S: float, K: float, r: float, sigma: float, T: float) -> float:
-    return (math.log(S) - math.log(K) + (r + 0.5 * sigma**2) * T) / (
-        sigma * math.sqrt(T)
-    )
+    numerator = math.log(S) - math.log(K) + (r + 0.5 * sigma**2) * T
+    return numerator / (sigma * math.sqrt(T))
 
 
 def _d2(d1: float, sigma: float, T: float) -> float:
@@ -105,21 +108,16 @@ def call_price_greeks(
     d1 = _d1(S, K, r, sigma, T)
     d2 = _d2(d1, sigma, T)
     discount = _discount_factor(r, T)
+    density = norm.pdf(d1)
     price = S * norm.cdf(d1) - K * discount * norm.cdf(d2)
     delta = norm.cdf(d1)
-    gamma = norm.pdf(d1) / (S * sigma * math.sqrt(T))
-    vega = S * norm.pdf(d1) * math.sqrt(T)
+    gamma = density / (S * sigma * math.sqrt(T))
+    vega = S * density * math.sqrt(T)
     theta = (
-        -(S * norm.pdf(d1) * sigma) / (2.0 * math.sqrt(T))
-        - r * K * math.exp(-r * T) * norm.cdf(d2)
+        -(S * density * sigma) / (2.0 * math.sqrt(T))
+        - r * K * discount * norm.cdf(d2)
     )
-    return OptionGreeks(
-        price=float(price),
-        delta=float(delta),
-        gamma=float(gamma),
-        vega=float(vega),
-        theta=float(theta),
-    )
+    return _result(price, delta, gamma, vega, theta)
 
 
 def put_price_greeks(
@@ -131,19 +129,14 @@ def put_price_greeks(
 
     d1 = _d1(S, K, r, sigma, T)
     d2 = _d2(d1, sigma, T)
-    discount = math.exp(-r * T)
+    discount = _discount_factor(r, T)
+    density = norm.pdf(d1)
     price = K * discount * norm.cdf(-d2) - S * norm.cdf(-d1)
     delta = -norm.cdf(-d1)
-    gamma = norm.pdf(d1) / (S * sigma * math.sqrt(T))
-    vega = S * norm.pdf(d1) * math.sqrt(T)
+    gamma = density / (S * sigma * math.sqrt(T))
+    vega = S * density * math.sqrt(T)
     theta = (
-        -(S * norm.pdf(d1) * sigma) / (2.0 * math.sqrt(T))
+        -(S * density * sigma) / (2.0 * math.sqrt(T))
         + r * K * discount * norm.cdf(-d2)
     )
-    return OptionGreeks(
-        price=float(price),
-        delta=float(delta),
-        gamma=float(gamma),
-        vega=float(vega),
-        theta=float(theta),
-    )
+    return _result(price, delta, gamma, vega, theta)
