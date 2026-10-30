@@ -18,12 +18,13 @@ def main():
     parser.add_argument("--splits", type=int, default=3)
     parser.add_argument("--train-fraction", type=float, default=0.6)
     parser.add_argument("--gamma-grid", default="0.01,0.03,0.1,0.3,1.0")
-    parser.add_argument("--fixed-half-spread", type=float, default=0.05)
+    parser.add_argument("--fixed-spread-grid", default="0.01,0.02,0.05,0.1,0.2")
     parser.add_argument("--order-size", type=float, default=10.0)
     parser.add_argument("--participation-rate", type=float, default=0.1)
     parser.add_argument("--inventory-penalty", type=float, default=0.01)
     parser.add_argument("--latency-seconds", type=float, default=0.0)
     parser.add_argument("--queue-aware", action="store_true")
+    parser.add_argument("--commission-per-contract", type=float, default=0.65)
     args = parser.parse_args()
 
     event_frame = load_research_events_csv(args.events)
@@ -35,12 +36,13 @@ def main():
         n_splits=args.splits,
         train_fraction=args.train_fraction,
         risk_aversion_grid=tuple(float(x) for x in args.gamma_grid.split(",")),
-        fixed_half_spread=args.fixed_half_spread,
+        fixed_spread_grid=tuple(float(x) for x in args.fixed_spread_grid.split(",")),
         order_size=args.order_size,
         participation_rate=args.participation_rate,
         inventory_penalty=args.inventory_penalty,
         latency_seconds=args.latency_seconds,
         queue_aware=args.queue_aware,
+        commission_per_contract=args.commission_per_contract,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     payload = [asdict(fold) for fold in results]
