@@ -1,6 +1,7 @@
 import pytest
 
 from options_mm.market.avellaneda_stoikov import AvellanedaStoikovQuoteModel
+from options_mm.metrics.pnl import PnLManager
 from options_mm.risk.inventory import InventoryManager
 from options_mm.simulation.event_driven import EventDrivenBacktest, MarketEvent
 
@@ -239,8 +240,6 @@ def test_initial_inventory_and_pnl_state_must_match():
 def test_open_initial_position_requires_a_final_fair_value():
     inventory = InventoryManager(max_position=10.0)
     inventory.on_fill("OPT-100-C", 2.0)
-    from options_mm.metrics.pnl import PnLManager
-
     pnl = PnLManager()
     pnl.record_fill("OPT-100-C", 1.5, 2.0)
     engine = EventDrivenBacktest(
