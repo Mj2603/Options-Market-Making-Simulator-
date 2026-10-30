@@ -8,6 +8,7 @@ from typing import Iterable
 import pandas as pd
 
 from options_mm.calibration import ArrivalCalibration, calibrate_exponential_arrivals
+from options_mm.execution.queue import L1QueueModel
 from options_mm.market.avellaneda_stoikov import AvellanedaStoikovQuoteModel
 from options_mm.market.policies import FixedSpreadQuoteModel
 from options_mm.metrics.research import performance_summary
@@ -56,6 +57,7 @@ def _select_gamma(
             quote_model=model,
             order_size=order_size,
             participation_rate=participation_rate,
+            queue_model=queue_model,
         ).run(training_events)
         score = result.net_total_pnl - inventory_penalty * _inventory_penalty(result)
         if score > best_score:
@@ -74,7 +76,9 @@ def walk_forward_compare(
     fixed_half_spread: float = 0.05,
     order_size: float = 10.0,
     participation_rate: float = 0.1,
-    inventory_penalty: float = 0.0,
+    inventory_penalty: float = 0.01,
+    latency_seconds: float = 0.0,
+    queue_aware: bool = False,
 ) -> list[WalkForwardFold]:
     """Run expanding-window tests with calibration/tuning restricted to train.
 
@@ -85,6 +89,18 @@ def walk_forward_compare(
     arrival exposures from real or explicitly labelled simulated data.
     """
     ordered = sorted(events, key=lambda item: item.timestamp)
+    if not math.isfinite(inventory_penalty) or inventory_penalty < 0.0:
+        raise ValueError("inventory_penalty must be finite and non-negative")
+    if not math.isfinite(latency_seconds) or latency_seconds < 0.0:
+        raise ValueError("latency_seconds must be finite and non-negative")
+    if queue_aware and any(
+        event.market_bid is None or event.market_ask is None for event in ordered
+    ):
+        raise ValueError("queue_aware requires NBBO bid/ask on every event")
+    queue_model = (
+        L1QueueModel(latency_seconds=latency_seconds)
+        if queue_aware or latency_seconds > 0.0 else None
+    )
     if len(ordered) < 10:
         raise ValueError("at least 10 market events are required")
     if "timestamp" not in arrival_observations:
@@ -142,6 +158,7 @@ def walk_forward_compare(
             quote_model=FixedSpreadQuoteModel(fixed_half_spread),
             order_size=order_size,
             participation_rate=participation_rate,
+            queue_model=queue_model,
         ).run(test_events)
         as_result = EventDrivenBacktest(
             quote_model=AvellanedaStoikovQuoteModel(
