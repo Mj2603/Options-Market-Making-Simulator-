@@ -71,7 +71,10 @@ def load_lewen_guo_options_parquet(
             + ", ".join(sorted(missing))
         )
 
-    session = pd.Timestamp(session_date)
+    try:
+        session = pd.Timestamp(session_date)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("session_date must be a valid calendar date") from exc
     if pd.isna(session):
         raise ValueError("session_date must be a valid calendar date")
     if session.tzinfo is not None:
