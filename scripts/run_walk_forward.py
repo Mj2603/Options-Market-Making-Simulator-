@@ -2,6 +2,7 @@
 import argparse
 from dataclasses import asdict
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -16,6 +17,7 @@ def main():
     parser.add_argument("--events", type=Path, default=Path("data/processed/research_events.csv"))
     parser.add_argument("--arrival-panel", type=Path, default=Path("data/processed/arrival_panel.csv"))
     parser.add_argument("--output", type=Path, default=Path("reports/walk_forward.json"))
+    parser.add_argument("--source-metadata", type=Path, default=Path("data/raw/alpaca/metadata.json"))
     parser.add_argument("--splits", type=int, default=3)
     parser.add_argument("--train-fraction", type=float, default=0.6)
     parser.add_argument("--gamma-grid", default="0.01,0.03,0.1,0.3,1.0")
@@ -68,7 +70,36 @@ def main():
         portfolio_risk_manager=portfolio_risk_manager,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    payload = [asdict(fold) for fold in results]
+    source_metadata = (
+        json.loads(args.source_metadata.read_text(encoding="utf-8"))
+        if args.source_metadata.exists()
+        else {
+            "provider": sorted(event_frame["data_provider"].dropna().unique().tolist())
+            if "data_provider" in event_frame else ["unspecified"],
+            "feed": sorted(event_frame["data_feed"].dropna().unique().tolist())
+            if "data_feed" in event_frame else ["unspecified"],
+        }
+    )
+    payload = {
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "source_metadata": source_metadata,
+        "configuration": {
+            "events_file": str(args.events),
+            "arrival_panel_file": str(args.arrival_panel),
+            "n_splits": args.splits,
+            "train_fraction": args.train_fraction,
+            "gamma_grid": [float(x) for x in args.gamma_grid.split(",")],
+            "fixed_spread_grid": [float(x) for x in args.fixed_spread_grid.split(",")],
+            "order_size": args.order_size,
+            "participation_rate": args.participation_rate,
+            "inventory_penalty": args.inventory_penalty,
+            "latency_seconds": args.latency_seconds,
+            "queue_aware": args.queue_aware,
+            "commission_per_contract": args.commission_per_contract,
+            "portfolio_risk_limits": risk_values,
+        },
+        "folds": [asdict(fold) for fold in results],
+    }
     args.output.write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
     print(f"Wrote {len(results)} walk-forward folds to {args.output}")
     for fold in results:
