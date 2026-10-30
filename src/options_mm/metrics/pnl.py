@@ -30,7 +30,7 @@ class PnLManager:
         if self.fees_paid < 0.0:
             raise ValueError("fees_paid must be non-negative")
 
-        normalized = {}
+        normalized_multipliers = {}
         for ticker, multiplier in self.contract_multipliers.items():
             if not isinstance(ticker, str) or not ticker.strip():
                 raise ValueError("contract multiplier keys must be non-empty strings")
@@ -39,8 +39,19 @@ class PnLManager:
             )
             if multiplier <= 0.0:
                 raise ValueError("contract multipliers must be strictly positive")
-            normalized[ticker] = multiplier
-        self.contract_multipliers = normalized
+            normalized_multipliers[ticker] = multiplier
+        self.contract_multipliers = normalized_multipliers
+
+        normalized_positions = {}
+        for ticker, state in self.positions.items():
+            if not isinstance(ticker, str) or not ticker.strip():
+                raise ValueError("position keys must be non-empty strings")
+            qty = self._finite_number("position quantity", state.get("qty", 0.0))
+            avg = self._finite_number("average price", state.get("avg", 0.0))
+            if avg < 0.0:
+                raise ValueError("average prices must be non-negative")
+            normalized_positions[ticker] = {"qty": qty, "avg": avg}
+        self.positions = normalized_positions
 
     @staticmethod
     def _finite_number(name: str, value: float) -> float:
@@ -66,43 +77,48 @@ class PnLManager:
             raise ValueError("fill size must be non-zero")
 
         multiplier = self._multiplier(ticker)
-        state = self.positions.setdefault(ticker, {"qty": 0.0, "avg": 0.0})
+        state = self.positions.get(ticker, {"qty": 0.0, "avg": 0.0})
         qty = self._finite_number("position quantity", state["qty"])
         avg = self._finite_number("average price", state["avg"])
-        if qty != 0.0 and avg < 0.0:
-            raise ValueError("average price must be non-negative")
-
-        self.fees_paid += abs(size) * self.commission_per_contract
+        fee_increment = abs(size) * self.commission_per_contract
+        updated_fees = self.fees_paid + fee_increment
+        if not math.isfinite(updated_fees):
+            raise ValueError("fill produces non-finite cumulative fees")
 
         if qty == 0.0:
-            state["qty"] = size
-            state["avg"] = price
+            self.positions[ticker] = {"qty": size, "avg": price}
+            self.fees_paid = updated_fees
             return
 
         if qty * size > 0.0:
             new_qty = qty + size
             new_avg = (abs(qty) * avg + abs(size) * price) / abs(new_qty)
-            state["qty"] = new_qty
-            state["avg"] = new_avg
+            if not math.isfinite(new_qty) or not math.isfinite(new_avg):
+                raise ValueError("fill produces non-finite position state")
+            self.positions[ticker] = {"qty": new_qty, "avg": new_avg}
+            self.fees_paid = updated_fees
             return
 
-        if abs(size) <= abs(qty):
-            closed = abs(size)
-            self.realized += (
-                closed * (price - avg) * (1.0 if qty > 0.0 else -1.0) * multiplier
-            )
-            state["qty"] = qty + size
-            if state["qty"] == 0.0:
-                state["avg"] = 0.0
-            return
-
-        closed = abs(qty)
-        self.realized += (
+        closed = min(abs(size), abs(qty))
+        realized_increment = (
             closed * (price - avg) * (1.0 if qty > 0.0 else -1.0) * multiplier
         )
-        remaining = size + qty
-        state["qty"] = remaining
-        state["avg"] = price
+        updated_realized = self.realized + realized_increment
+        if not math.isfinite(updated_realized):
+            raise ValueError("fill produces non-finite realized P&L")
+
+        if abs(size) <= abs(qty):
+            new_qty = qty + size
+            new_avg = 0.0 if new_qty == 0.0 else avg
+        else:
+            new_qty = qty + size
+            new_avg = price
+        if not math.isfinite(new_qty) or not math.isfinite(new_avg):
+            raise ValueError("fill produces non-finite position state")
+
+        self.positions[ticker] = {"qty": new_qty, "avg": new_avg}
+        self.realized = updated_realized
+        self.fees_paid = updated_fees
 
     def mark_to_market(self, price_map: Dict[str, float]) -> float:
         mtm = 0.0
@@ -120,6 +136,8 @@ class PnLManager:
             if market_price < 0.0:
                 raise ValueError("mark prices must be non-negative")
             mtm += qty * (market_price - avg) * self._multiplier(ticker)
+            if not math.isfinite(mtm):
+                raise ValueError("marks produce non-finite unrealized P&L")
         return mtm
 
     def total_unrealized_plus_realized(self, price_map: Dict[str, float]) -> float:
