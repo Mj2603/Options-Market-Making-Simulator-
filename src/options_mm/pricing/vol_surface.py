@@ -166,3 +166,32 @@ class EWMAVolatility:
         if self.variance is None:
             return float("nan")
         return math.sqrt(self.variance * self.periods_per_year)
+
+
+def price_with_surface(
+    surface: SVIVolatilitySurface,
+    spot: float,
+    forward: float,
+    strike: float,
+    rate: float,
+    expiry_years: float,
+    option_type: str,
+):
+    """Price a European option using surface IV and Black–Scholes Greeks.
+
+    The surface is queried in forward log-moneyness. This wrapper assumes the
+    caller supplies a consistent forward, discount rate, and expiry clock.
+    """
+    from options_mm.pricing.black_scholes import (
+        call_price_greeks,
+        put_price_greeks,
+    )
+
+    if option_type not in ("call", "put"):
+        raise ValueError("option_type must be 'call' or 'put'")
+    volatility = surface.implied_volatility(forward, strike, expiry_years)
+    if option_type == "call":
+        greeks = call_price_greeks(spot, strike, rate, volatility, expiry_years)
+    else:
+        greeks = put_price_greeks(spot, strike, rate, volatility, expiry_years)
+    return greeks, volatility
