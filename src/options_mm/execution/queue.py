@@ -58,6 +58,8 @@ class L1QueueModel:
         trade_size: float,
         aggressor_side: str,
         order_side: str,
+        participation_rate: float = 1.0,
+        max_fill_size: float = math.inf,
     ) -> QueueFill:
         """Consume queue only when the trade reaches the resting price.
 
@@ -70,6 +72,10 @@ class L1QueueModel:
             raise ValueError("trade inputs must be finite")
         if trade_size < 0.0:
             raise ValueError("trade_size must be non-negative")
+        if not 0.0 <= participation_rate <= 1.0:
+            raise ValueError("participation_rate must be in [0, 1]")
+        if math.isnan(max_fill_size) or max_fill_size < 0.0:
+            raise ValueError("max_fill_size must be non-negative")
         if order_side not in ("buy", "sell") or aggressor_side not in ("buy", "sell"):
             raise ValueError("side must be 'buy' or 'sell'")
         eligible_side = (
@@ -82,7 +88,11 @@ class L1QueueModel:
         volume_after_queue = max(0.0, trade_size - order.queue_ahead)
         consumed_ahead = min(order.queue_ahead, trade_size)
         order.queue_ahead -= consumed_ahead
-        fill = min(order.remaining_size, volume_after_queue)
+        fill = min(
+            order.remaining_size,
+            volume_after_queue * participation_rate,
+            max_fill_size,
+        )
         order.remaining_size -= fill
         return QueueFill(fill, order.queue_ahead, order.remaining_size)
 
