@@ -106,7 +106,6 @@ def walk_forward_compare(
     n_splits: int = 3,
     train_fraction: float = 0.6,
     risk_aversion_grid: tuple[float, ...] = (0.01, 0.03, 0.1, 0.3, 1.0),
-    fixed_half_spread: float = 0.05,
     fixed_spread_grid: tuple[float, ...] = (0.01, 0.02, 0.05, 0.1, 0.2),
     order_size: float = 10.0,
     participation_rate: float = 0.1,
