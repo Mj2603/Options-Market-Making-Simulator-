@@ -148,6 +148,18 @@ class EventDrivenBacktest:
                 raise ValueError("initial inventory must be finite")
             if abs(position) > max_position:
                 raise ValueError("initial inventory exceeds max_position")
+        instruments = set(self.inventory.positions) | set(self.pnl.positions)
+        for instrument in instruments:
+            inventory_quantity = self.inventory.position(instrument)
+            pnl_state = self.pnl.positions.get(instrument, {})
+            pnl_quantity = float(pnl_state.get("qty", 0.0))
+            if not math.isfinite(pnl_quantity) or not math.isclose(
+                inventory_quantity, pnl_quantity, rel_tol=0.0, abs_tol=1e-9
+            ):
+                raise ValueError(
+                    "initial inventory and PnL positions must be consistent; "
+                    "seed both managers with the same fills"
+                )
         self._has_run = False
 
     @staticmethod
