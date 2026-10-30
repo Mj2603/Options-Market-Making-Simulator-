@@ -113,7 +113,7 @@ This is an intentionally limited research prototype. In particular:
 - The execution model is deterministic and does not simulate queue priority, order-book depth, partial fills, latency, cancellations, or market impact.
 - Inventory limits are exposed as checks; the current execution flow does not provide a complete pre-trade risk-control layer.
 - P&L accounting is simplified and does not yet include exchange fees, rebates, contract multipliers, funding, exercise/assignment, or corporate actions.
-- The pricing implementation is Black–Scholes only; it does not calibrate an implied-volatility surface or model stochastic volatility.
+- Pricing is European Black–Scholes only. Input domains and deterministic zero-volatility / expiry cases are validated, but the implementation does not calibrate an implied-volatility surface or model stochastic volatility.
 - The regime detector is a simple threshold baseline, not a validated forecasting model.
 - A passing unit-test suite verifies the tested software behavior. It does not establish trading profitability, execution quality, or production readiness.
 
@@ -123,9 +123,9 @@ Consequently, the project should not be connected to a live brokerage account or
 
 The next engineering priorities are:
 
-1. Add explicit input-domain validation and numerical edge-case tests to pricing and quoting.
-2. Introduce a reproducible event-driven simulation loop with clear event ordering and state transitions.
-3. Add pre-trade risk controls and calibrate quote-model parameters on training data, with out-of-sample evaluation.
+1. Introduce a reproducible event-driven simulation loop with explicit event ordering and state transitions.
+2. Add pre-trade risk controls that cannot be bypassed by the execution path.
+3. Calibrate quote-model parameters on training data and evaluate them out of sample against the fixed-spread baseline.
 4. Replace deterministic fills with configurable fill, partial-fill, and latency models; add queue-aware execution only when suitable order-book data is available.
 5. Add transaction costs, contract multipliers, and independently reconciled P&L.
 6. Build walk-forward experiments with benchmark policies, parameter controls, and leakage-safe evaluation.
