@@ -39,3 +39,14 @@ def test_invalid_risk_position_rejected():
     risk = PortfolioRiskManager()
     with pytest.raises(ValueError):
         risk.pre_trade_check([], pos(quantity=float("nan")))
+
+
+def test_delta_hedge_and_scenario_pnl():
+    positions = [pos(quantity=1.0, delta=0.5)]
+    risk = PortfolioRiskManager()
+    assert risk.delta_hedge_quantity(positions) == pytest.approx(-50.0)
+    exposure = risk.aggregate(positions)
+    scenario = risk.scenario_pnl(
+        exposure, spot_change=-2.0, volatility_change=0.01, days_elapsed=1.0
+    )
+    assert scenario == pytest.approx(-50.0 * 2.0 + 0.5 * 2.0 * 2.0 + 10.0 * 0.01 - 3.0)
