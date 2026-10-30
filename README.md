@@ -14,7 +14,7 @@ The current implementation contains the following research components:
 | Component | Current functionality |
 |---|---|
 | Option pricing | Black–Scholes European call/put prices and first-order/second-order Greeks |
-| Quote construction | Theoretical option value with a configurable fixed half-spread |
+| Quote construction | Fixed-spread baseline plus an inventory-aware Avellaneda–Stoikov reservation-price model |
 | Execution model | Deterministic touch/cross fill rules for marketable and limit orders |
 | Inventory | Per-instrument position tracking and limit checks |
 | P&L | Average-cost realized P&L and mark-to-market unrealized P&L |
@@ -36,7 +36,7 @@ Data validation and normalization
 Black–Scholes valuation -----> Greeks
       |                         |
       v                         v
-Fixed-spread quote engine   Delta hedge sizing
+Fixed / inventory-aware quote models   Delta hedge sizing
       |
       v
 Simplified execution rules
@@ -52,7 +52,7 @@ The main package is under `src/options_mm/`:
 
 - `data/` — CSV ingestion and quote-data validation
 - `pricing/` — Black–Scholes pricing and Greeks
-- `market/` — theoretical bid/ask quote construction
+- `market/` — fixed-spread and inventory-aware bid/ask quote construction
 - `execution/` — simplified order-fill rules
 - `risk/` — inventory state and position-limit checks
 - `metrics/` — realized and mark-to-market P&L
@@ -109,7 +109,7 @@ No historical market-data file is bundled with this repository. The loader can b
 
 This is an intentionally limited research prototype. In particular:
 
-- The quote engine applies a fixed spread; it does not yet optimize quotes for inventory, adverse selection, volatility, or market conditions.
+- The Avellaneda–Stoikov module now skews quotes for signed inventory and widens the model spread with price volatility and remaining horizon. It assumes constant volatility and exponential order arrivals; its intensity parameter is not calibrated from data. It does not model queue position, adverse selection, or market impact.
 - The execution model is deterministic and does not simulate queue priority, order-book depth, partial fills, latency, cancellations, or market impact.
 - Inventory limits are exposed as checks; the current execution flow does not provide a complete pre-trade risk-control layer.
 - P&L accounting is simplified and does not yet include exchange fees, rebates, contract multipliers, funding, exercise/assignment, or corporate actions.
@@ -125,7 +125,7 @@ The next engineering priorities are:
 
 1. Add explicit input-domain validation and numerical edge-case tests to pricing and quoting.
 2. Introduce a reproducible event-driven simulation loop with clear event ordering and state transitions.
-3. Add inventory-aware quoting and pre-trade risk controls.
+3. Add pre-trade risk controls and calibrate quote-model parameters on training data, with out-of-sample evaluation.
 4. Replace deterministic fills with configurable fill, partial-fill, and latency models; add queue-aware execution only when suitable order-book data is available.
 5. Add transaction costs, contract multipliers, and independently reconciled P&L.
 6. Build walk-forward experiments with benchmark policies, parameter controls, and leakage-safe evaluation.
