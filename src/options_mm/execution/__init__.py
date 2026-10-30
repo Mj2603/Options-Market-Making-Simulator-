@@ -1,4 +1,5 @@
-"""Execution simulator primitives for orders and fills (Phase 4).
-"""
+"""Execution simulation, queue, and latency primitives."""
 
-__all__ = ["execution"]
+from options_mm.execution.queue import L1QueueModel, QueueFill, QueuePosition, signed_markout
+
+__all__ = ["L1QueueModel", "QueueFill", "QueuePosition", "signed_markout"]

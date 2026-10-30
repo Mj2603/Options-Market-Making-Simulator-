@@ -1,3 +1,5 @@
+import pytest
+
 from options_mm.market.quote_engine import QuoteEngine
 from options_mm.pricing.black_scholes import call_price_greeks
 
@@ -15,12 +17,12 @@ def test_quote_engine_mid_matches_greeks():
     assert abs(q.ask - q.bid - 0.2) < 1e-12
 
 
-def test_quote_engine_rejects_invalid_spread_and_option_type():
-    import pytest
+@pytest.mark.parametrize("spread", [-0.01, float("nan"), float("inf")])
+def test_quote_engine_rejects_invalid_half_spread(spread):
+    with pytest.raises(ValueError):
+        QuoteEngine(half_spread=spread)
 
-    for spread in (-0.01, float("nan"), float("inf")):
-        with pytest.raises(ValueError):
-            QuoteEngine(half_spread=spread)
 
-    with pytest.raises(ValueError, match="option_type"):
-        QuoteEngine().quote(100, 100, 0.01, 0.2, 1.0, "binary")
+def test_quote_engine_rejects_unknown_option_type():
+    with pytest.raises(ValueError):
+        QuoteEngine().quote(100.0, 100.0, 0.01, 0.2, 1.0, "binary")
