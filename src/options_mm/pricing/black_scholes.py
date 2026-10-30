@@ -44,11 +44,28 @@ def _validate_inputs(S: float, K: float, r: float, sigma: float, T: float):
     return S, K, r, sigma, T
 
 
+def _discount_factor(r: float, T: float) -> float:
+    try:
+        discount = math.exp(-r * T)
+    except OverflowError as exc:
+        raise ValueError("rate and maturity produce an unstable discount factor") from exc
+    if not math.isfinite(discount):
+        raise ValueError("rate and maturity produce a non-finite discount factor")
+    return discount
+
+
+def _result(price: float, delta: float, gamma: float, vega: float, theta: float) -> OptionGreeks:
+    values = (price, delta, gamma, vega, theta)
+    if not all(math.isfinite(value) for value in values):
+        raise ValueError("inputs produce non-finite Black-Scholes output")
+    return _result(price, delta, gamma, vega, theta)
+
+
 def _deterministic_greeks(
     S: float, K: float, r: float, T: float, option_type: str
 ) -> OptionGreeks:
     """Exact zero-volatility or expiry value, with midpoint ATM delta."""
-    discounted_strike = K * math.exp(-r * T) if T > 0.0 else K
+    discounted_strike = K * _discount_factor(r, T) if T > 0.0 else K
     if option_type == "call":
         intrinsic = max(S - discounted_strike, 0.0)
         if S > discounted_strike:
@@ -65,17 +82,11 @@ def _deterministic_greeks(
             delta = 0.0
         else:
             delta = -0.5
-    return OptionGreeks(
-        price=float(intrinsic),
-        delta=float(delta),
-        gamma=0.0,
-        vega=0.0,
-        theta=0.0,
-    )
+    return _result(intrinsic, delta, 0.0, 0.0, 0.0)
 
 
 def _d1(S: float, K: float, r: float, sigma: float, T: float) -> float:
-    return (math.log(S / K) + (r + 0.5 * sigma**2) * T) / (
+    return (math.log(S) - math.log(K) + (r + 0.5 * sigma**2) * T) / (
         sigma * math.sqrt(T)
     )
 
@@ -93,7 +104,8 @@ def call_price_greeks(
 
     d1 = _d1(S, K, r, sigma, T)
     d2 = _d2(d1, sigma, T)
-    price = S * norm.cdf(d1) - K * math.exp(-r * T) * norm.cdf(d2)
+    discount = _discount_factor(r, T)
+    price = S * norm.cdf(d1) - K * discount * norm.cdf(d2)
     delta = norm.cdf(d1)
     gamma = norm.pdf(d1) / (S * sigma * math.sqrt(T))
     vega = S * norm.pdf(d1) * math.sqrt(T)
