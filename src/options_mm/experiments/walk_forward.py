@@ -139,6 +139,17 @@ def walk_forward_compare(
         raise ValueError("queue/latency simulation requires NBBO bid/ask on every event")
     if not math.isfinite(commission_per_contract) or commission_per_contract < 0.0:
         raise ValueError("commission_per_contract must be finite and non-negative")
+    if portfolio_risk_manager is not None and any(
+        event.trade_size > 0.0
+        and (
+            event.underlying is None
+            or any(value is None for value in (event.delta, event.gamma, event.vega, event.theta))
+        )
+        for event in ordered
+    ):
+        raise ValueError(
+            "portfolio risk limits require underlying and delta/gamma/vega/theta on every trade event"
+        )
     if not fixed_spread_grid or any(
         not math.isfinite(float(spread)) or spread < 0.0
         for spread in fixed_spread_grid
