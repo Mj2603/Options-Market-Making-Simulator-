@@ -29,6 +29,7 @@ def make_arrival_panel():
         for distance, count in ((0.05, 8), (0.10, 5), (0.15, 3), (0.20, 1)):
             rows.append({
                 "timestamp": timestamp,
+                "instrument": "OPT",
                 "quote_distance": distance,
                 "arrival_count": count,
                 "exposure_seconds": 60.0,
