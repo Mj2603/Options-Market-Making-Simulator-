@@ -53,8 +53,9 @@ parameter, not a measured fill probability.
 The engine prevents fills that would move absolute instrument inventory beyond
 the configured per-instrument limit. P&L uses the existing average-cost
 accounting and marks remaining positions to the last supplied fair value for
-each instrument. Fees, rebates, contract multipliers, funding, and exercise or
-assignment cash flows are not yet included.
+each instrument. Configurable contract multipliers and per-contract commissions
+are applied. Rebates, funding, exercise or assignment cash flows, and corporate
+actions are not yet included. The result reports gross and net P&L separately.
 
 ## Important limitations
 
