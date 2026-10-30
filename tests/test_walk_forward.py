@@ -50,6 +50,8 @@ def test_walk_forward_calibrates_only_on_prior_data_and_compares_models():
     assert folds[0].train_end < folds[0].test_start
     assert folds[1].train_end < folds[1].test_start
     assert folds[0].arrival_calibration.price_sensitivity > 0.0
+    assert "OPT" in folds[0].instrument_arrival_calibrations
+    assert folds[0].instrument_arrival_calibrations["OPT"].price_sensitivity > 0.0
     assert folds[0].selected_risk_aversion in (0.01, 0.1)
     assert "net_pnl" in folds[0].fixed_spread_metrics
     assert "net_pnl" in folds[0].inventory_aware_metrics
