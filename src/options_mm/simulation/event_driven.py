@@ -429,12 +429,25 @@ class EventDrivenBacktest:
                     fills.append(fill)
 
             last_fair_values[event.instrument] = event.fair_value
-            resting_quotes[event.instrument] = self.quote_model.quote(
-                fair_value=event.fair_value,
-                inventory=self.inventory.position(event.instrument),
-                price_volatility=event.price_volatility,
-                time_to_horizon=event.time_to_horizon,
+            quote_for_instrument = getattr(
+                self.quote_model, "quote_for_instrument", None
             )
+            if callable(quote_for_instrument):
+                new_quote = quote_for_instrument(
+                    event.instrument,
+                    event.fair_value,
+                    self.inventory.position(event.instrument),
+                    event.price_volatility,
+                    event.time_to_horizon,
+                )
+            else:
+                new_quote = self.quote_model.quote(
+                    fair_value=event.fair_value,
+                    inventory=self.inventory.position(event.instrument),
+                    price_volatility=event.price_volatility,
+                    time_to_horizon=event.time_to_horizon,
+                )
+            resting_quotes[event.instrument] = new_quote
             if self.queue_model is not None and (
                 previous_quote is None
                 or not math.isclose(
