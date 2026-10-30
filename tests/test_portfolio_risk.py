@@ -51,7 +51,9 @@ def test_delta_hedge_and_scenario_pnl():
     scenario = risk.scenario_pnl(
         exposure, spot_change=-2.0, volatility_change=0.01, days_elapsed=1.0
     )
-    assert scenario == pytest.approx(-50.0 * 2.0 + 0.5 * 2.0 * 2.0 + 10.0 * 0.01 - 3.0)
+    assert scenario == pytest.approx(
+        50.0 * -2.0 + 0.5 * 2.0 * (-2.0) ** 2 + 10.0 * 0.01 - 3.0
+    )
 
 
 def test_pretrade_rejects_theta_limit_breach():
