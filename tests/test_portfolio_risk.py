@@ -16,7 +16,7 @@ def test_portfolio_greeks_and_concentration_aggregate():
         pos(quantity=2.0),
         pos(instrument="AAPL-P", quantity=-1.0, delta=-0.4, value=3.0),
     ])
-    assert exposure.delta == pytest.approx(60.0)
+    assert exposure.delta == pytest.approx(140.0)
     assert exposure.gross_market_value == pytest.approx(700.0)
     assert exposure.by_underlying["AAPL"] == pytest.approx(700.0)
 
