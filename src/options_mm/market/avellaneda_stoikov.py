@@ -32,9 +32,12 @@ class AvellanedaStoikovQuoteModel:
     ----------
     risk_aversion:
         Positive risk-aversion coefficient (gamma).
+    arrival_price_sensitivity:
+        Positive exponential price-distance sensitivity (k), with inverse
+        price units. This is distinct from the zero-distance arrival rate A.
     order_arrival_intensity:
-        Positive exponential order-arrival intensity (k). Its units are
-        inverse price units under the simplified A-S parameterization.
+        Backwards-compatible alias for arrival_price_sensitivity. The legacy
+        name is misleading because this parameter is k, not A.
 
     Notes
     -----
@@ -52,16 +55,31 @@ class AvellanedaStoikovQuoteModel:
     def __init__(
         self,
         risk_aversion: float = 0.1,
-        order_arrival_intensity: float = 1.5,
+        order_arrival_intensity: float | None = None,
+        *,
+        arrival_price_sensitivity: float | None = None,
     ) -> None:
         self.risk_aversion = self._finite_float("risk_aversion", risk_aversion)
-        self.order_arrival_intensity = self._finite_float(
-            "order_arrival_intensity", order_arrival_intensity
+        if order_arrival_intensity is not None and arrival_price_sensitivity is not None:
+            raise ValueError(
+                "provide arrival_price_sensitivity or legacy order_arrival_intensity, not both"
+            )
+        sensitivity = (
+            arrival_price_sensitivity
+            if arrival_price_sensitivity is not None
+            else order_arrival_intensity
         )
+        if sensitivity is None:
+            sensitivity = 1.5
+        self.arrival_price_sensitivity = self._finite_float(
+            "arrival_price_sensitivity", sensitivity
+        )
+        # Preserve the old attribute for downstream code using the prototype API.
+        self.order_arrival_intensity = self.arrival_price_sensitivity
         if self.risk_aversion <= 0.0:
             raise ValueError("risk_aversion must be strictly positive")
-        if self.order_arrival_intensity <= 0.0:
-            raise ValueError("order_arrival_intensity must be strictly positive")
+        if self.arrival_price_sensitivity <= 0.0:
+            raise ValueError("arrival_price_sensitivity must be strictly positive")
 
     @staticmethod
     def _finite_float(name: str, value: float) -> float:
@@ -108,7 +126,7 @@ class AvellanedaStoikovQuoteModel:
                 fair_value - inventory * gamma * sigma_squared_horizon
             )
             arrival_term = math.log1p(
-                gamma / self.order_arrival_intensity
+                gamma / self.arrival_price_sensitivity
             ) / gamma
             half_spread = (
                 0.5 * gamma * sigma_squared_horizon + arrival_term
