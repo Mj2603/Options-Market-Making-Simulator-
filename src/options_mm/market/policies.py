@@ -37,3 +37,51 @@ class FixedSpreadQuoteModel:
             half_spread=self.half_spread,
             inventory=float(inventory),
         )
+
+
+class InstrumentAwareASQuoteModel:
+    """Apply instrument-specific arrival price sensitivity with shared gamma."""
+
+    def __init__(
+        self,
+        risk_aversion: float,
+        price_sensitivity_by_instrument: dict[str, float],
+        default_price_sensitivity: float,
+    ):
+        from options_mm.market.avellaneda_stoikov import AvellanedaStoikovQuoteModel
+
+        self.default_model = AvellanedaStoikovQuoteModel(
+            risk_aversion=risk_aversion,
+            order_arrival_intensity=default_price_sensitivity,
+        )
+        self.models = {
+            instrument: AvellanedaStoikovQuoteModel(
+                risk_aversion=risk_aversion,
+                order_arrival_intensity=sensitivity,
+            )
+            for instrument, sensitivity in price_sensitivity_by_instrument.items()
+        }
+
+    def quote_for_instrument(
+        self,
+        instrument: str,
+        fair_value: float,
+        inventory: float,
+        price_volatility: float,
+        time_to_horizon: float,
+    ) -> InventoryAwareQuote:
+        model = self.models.get(instrument, self.default_model)
+        return model.quote(
+            fair_value, inventory, price_volatility, time_to_horizon
+        )
+
+    def quote(
+        self,
+        fair_value: float,
+        inventory: float,
+        price_volatility: float,
+        time_to_horizon: float,
+    ) -> InventoryAwareQuote:
+        return self.default_model.quote(
+            fair_value, inventory, price_volatility, time_to_horizon
+        )
