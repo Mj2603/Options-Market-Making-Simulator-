@@ -4,6 +4,20 @@
 
 The simulator consumes historical option quote observations. Loaders normalize timestamps and quote fields; they do not manufacture market observations or infer whether a hypothetical order would have executed.
 
+## Inspected sample file
+
+The attached sample was inspected at the Parquet metadata and dictionary-page level:
+
+- File: `sp500-options-2023-01-03-sample.parquet`
+- Format: Apache Parquet, Zstandard-compressed column chunks
+- Rows: 5,000
+- Columns: `ticker`, `minute`, `ask_price`, `ask_size`, `bid_price`, `bid_size`
+- Ticker dictionary: 62 entries
+- Minute statistics: 570 through 1,023; the source page identifies minute 570 as 09:30
+- SHA-256: `cac98fc0558b2fe64b47b810b99cd0f2dfd298e63177b600d4d8a042bc9b8200`
+
+The metadata inspection confirms the physical schema and option-symbol encoding. It is not a substitute for running the new adapter against the exact uploaded binary with PyArrow; the automated integration test instead round-trips a generated Parquet fixture through PyArrow.
+
 ## Lewen Guo minute-level option quote sample
 
 The adapter in `src/options_mm/data/lewen_guo.py` reads the public Parquet sample. Its source schema is `ticker`, `minute`, `ask_price`, `ask_size`, `bid_price`, and `bid_size`. The file contains option quote snapshots only; it does not contain the underlying equity price.
@@ -14,7 +28,7 @@ The adapter in `src/options_mm/data/lewen_guo.py` reads the public Parquet sampl
 - Crossed quotes, invalid prices, and negative displayed sizes are removed. Midprice and quoted spread are derived from the observed bid and ask.
 - The output intentionally has no numeric `underlying` column. Join a timestamp-aligned underlying quote feed before pricing or delta calculations.
 
-Install the optional Parquet engine with `pip install -e '.[parquet]'`.
+Install the optional Parquet reader with `pip install -e '.[parquet]'`.
 
 ## Canonical pricing schema
 
