@@ -123,6 +123,7 @@ class EventDrivenBacktest:
         pnl_manager: PnLManager | None = None,
         order_size: float = 10.0,
         participation_rate: float = 0.1,
+        quantity_step: float = 1.0,
     ) -> None:
         self.quote_model = quote_model or AvellanedaStoikovQuoteModel()
         self.inventory = inventory_manager or InventoryManager()
@@ -131,15 +132,22 @@ class EventDrivenBacktest:
         self.participation_rate = self._positive_finite(
             "participation_rate", participation_rate
         )
+        self.quantity_step = self._positive_finite("quantity_step", quantity_step)
         if self.participation_rate > 1.0:
             raise ValueError("participation_rate must not exceed 1")
-        if not math.isfinite(float(self.inventory.max_position)) or self.inventory.max_position <= 0:
+        try:
+            max_position = float(self.inventory.max_position)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("inventory max_position must be finite and positive") from exc
+        if not math.isfinite(max_position) or max_position <= 0.0:
             raise ValueError("inventory max_position must be finite and positive")
-        if any(
-            abs(float(position)) > self.inventory.max_position
-            for position in self.inventory.positions.values()
-        ):
-            raise ValueError("initial inventory exceeds max_position")
+        self.inventory.max_position = max_position
+        for position in self.inventory.positions.values():
+            position = float(position)
+            if not math.isfinite(position):
+                raise ValueError("initial inventory must be finite")
+            if abs(position) > max_position:
+                raise ValueError("initial inventory exceeds max_position")
         self._has_run = False
 
     @staticmethod
@@ -159,7 +167,7 @@ class EventDrivenBacktest:
             return None
 
         if event.aggressor_side == "buy":
-            if event.trade_price < resting.ask:
+            if resting.ask <= 0.0 or event.trade_price < resting.ask:
                 return None
             our_side: Literal["buy", "sell"] = "sell"
             fill_price = resting.ask
@@ -167,7 +175,7 @@ class EventDrivenBacktest:
                 self.inventory.max_position + self.inventory.position(event.instrument)
             )
         else:
-            if event.trade_price > resting.bid:
+            if resting.bid <= 0.0 or event.trade_price > resting.bid:
                 return None
             our_side = "buy"
             fill_price = resting.bid
@@ -176,11 +184,13 @@ class EventDrivenBacktest:
             )
 
         available_trade_size = event.trade_size * self.participation_rate
-        fill_size = min(
+        maximum_fill = min(
             self.order_size,
             available_trade_size,
             max(0.0, inventory_headroom),
         )
+        units = math.floor(maximum_fill / self.quantity_step + 1e-12)
+        fill_size = units * self.quantity_step
         if fill_size <= 0.0:
             return None
 
