@@ -10,7 +10,10 @@ import pandas as pd
 from options_mm.calibration import ArrivalCalibration, calibrate_exponential_arrivals
 from options_mm.execution.queue import L1QueueModel
 from options_mm.market.avellaneda_stoikov import AvellanedaStoikovQuoteModel
-from options_mm.market.policies import FixedSpreadQuoteModel
+from options_mm.market.policies import (
+    FixedSpreadQuoteModel,
+    InstrumentAwareASQuoteModel,
+)
 from options_mm.metrics.pnl import PnLManager
 from options_mm.metrics.research import performance_summary
 from options_mm.risk.portfolio import PortfolioRiskManager
@@ -25,6 +28,7 @@ class WalkForwardFold:
     test_start: float
     test_end: float
     arrival_calibration: ArrivalCalibration
+    instrument_arrival_calibrations: dict[str, ArrivalCalibration]
     selected_risk_aversion: float
     selected_fixed_half_spread: float
     fixed_spread_metrics: dict
@@ -44,6 +48,7 @@ def _inventory_penalty(result) -> float:
 def _select_gamma(
     training_events: list[MarketEvent],
     price_sensitivity: float,
+    price_sensitivity_by_instrument: dict[str, float],
     gamma_grid: tuple[float, ...],
     order_size: float,
     participation_rate: float,
@@ -55,9 +60,10 @@ def _select_gamma(
     best_gamma = None
     best_score = -math.inf
     for gamma in gamma_grid:
-        model = AvellanedaStoikovQuoteModel(
+        model = InstrumentAwareASQuoteModel(
             risk_aversion=gamma,
-            order_arrival_intensity=price_sensitivity,
+            price_sensitivity_by_instrument=price_sensitivity_by_instrument,
+            default_price_sensitivity=price_sensitivity,
         )
         result = EventDrivenBacktest(
             quote_model=model,
@@ -203,9 +209,24 @@ def walk_forward_compare(
         if train_panel.empty:
             raise ValueError("no arrival calibration observations in training window")
         calibration = calibrate_exponential_arrivals(train_panel)
+        instrument_calibrations = {}
+        if "instrument" in train_panel.columns:
+            for instrument, instrument_panel in train_panel.groupby("instrument"):
+                try:
+                    instrument_calibrations[str(instrument)] = (
+                        calibrate_exponential_arrivals(instrument_panel)
+                    )
+                except ValueError:
+                    # A thin instrument falls back to the pooled training fit.
+                    continue
+        sensitivity_by_instrument = {
+            instrument: item.price_sensitivity
+            for instrument, item in instrument_calibrations.items()
+        }
         gamma = _select_gamma(
             train_events,
             calibration.price_sensitivity,
+            sensitivity_by_instrument,
             risk_aversion_grid,
             order_size,
             participation_rate,
@@ -234,9 +255,10 @@ def walk_forward_compare(
             portfolio_risk_manager=portfolio_risk_manager,
         ).run(test_events)
         as_result = EventDrivenBacktest(
-            quote_model=AvellanedaStoikovQuoteModel(
+            quote_model=InstrumentAwareASQuoteModel(
                 risk_aversion=gamma,
-                order_arrival_intensity=calibration.price_sensitivity,
+                price_sensitivity_by_instrument=sensitivity_by_instrument,
+                default_price_sensitivity=calibration.price_sensitivity,
             ),
             order_size=order_size,
             participation_rate=participation_rate,
@@ -252,6 +274,7 @@ def walk_forward_compare(
                 test_start=test_start,
                 test_end=test_end,
                 arrival_calibration=calibration,
+                instrument_arrival_calibrations=instrument_calibrations,
                 selected_risk_aversion=gamma,
                 selected_fixed_half_spread=selected_spread,
                 fixed_spread_metrics=performance_summary(fixed_result, test_events),
