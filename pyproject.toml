@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "options-market-making-simulator"
 version = "0.1.0"
-description = "Research simulator for option pricing, quoting, execution and inventory"
+description = "Python research prototype for options valuation, quote construction, simplified execution, inventory accounting, P&L, and delta hedging"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
