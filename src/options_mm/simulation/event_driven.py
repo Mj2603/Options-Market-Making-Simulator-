@@ -393,6 +393,24 @@ class EventDrivenBacktest:
                 raise ValueError("events must be sorted by non-decreasing timestamp")
             previous_timestamp = event.timestamp
 
+            if self.portfolio_risk_manager is not None:
+                current_risk = self._risk_positions.get(event.instrument)
+                if current_risk is not None and all(
+                    value is not None
+                    for value in (event.delta, event.gamma, event.vega, event.theta)
+                ):
+                    self._risk_positions[event.instrument] = OptionRiskPosition(
+                        instrument=event.instrument,
+                        underlying=event.underlying or current_risk.underlying,
+                        quantity=current_risk.quantity,
+                        multiplier=event.contract_multiplier,
+                        delta=event.delta,
+                        gamma=event.gamma,
+                        vega=event.vega,
+                        theta=event.theta,
+                        market_value=event.fair_value,
+                    )
+
             previous_quote = resting_quotes.get(event.instrument)
             resting = previous_quote
             if resting is not None:
