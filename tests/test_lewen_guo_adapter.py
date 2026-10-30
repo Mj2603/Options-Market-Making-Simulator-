@@ -50,6 +50,27 @@ def test_load_parquet_maps_quotes_without_fabricating_underlying(monkeypatch):
     assert "underlying" not in result.columns
 
 
+def test_parquet_engine_round_trip(tmp_path):
+    raw = pd.DataFrame(
+        {
+            "ticker": ["O:A230120C00050000"],
+            "minute": [570],
+            "ask_price": [1.25],
+            "ask_size": [10],
+            "bid_price": [1.15],
+            "bid_size": [11],
+        }
+    )
+    path = tmp_path / "quotes.parquet"
+    raw.to_parquet(path, index=False)
+
+    result = load_lewen_guo_options_parquet(
+        path, session_date="2023-01-03"
+    )
+    assert len(result) == 1
+    assert result.loc[0, "contract_symbol"] == "O:A230120C00050000"
+
+
 def test_load_parquet_filters_crossed_quotes(monkeypatch):
     raw = pd.DataFrame(
         {
