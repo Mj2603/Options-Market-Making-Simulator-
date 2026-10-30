@@ -233,3 +233,19 @@ def test_initial_inventory_and_pnl_state_must_match():
     inventory.on_fill("OPT-100-C", 2.0)
     with pytest.raises(ValueError, match="must be consistent"):
         EventDrivenBacktest(inventory_manager=inventory)
+
+
+
+def test_open_initial_position_requires_a_final_fair_value():
+    inventory = InventoryManager(max_position=10.0)
+    inventory.on_fill("OPT-100-C", 2.0)
+    from options_mm.metrics.pnl import PnLManager
+
+    pnl = PnLManager()
+    pnl.record_fill("OPT-100-C", 1.5, 2.0)
+    engine = EventDrivenBacktest(
+        inventory_manager=inventory,
+        pnl_manager=pnl,
+    )
+    with pytest.raises(ValueError, match="missing final fair value"):
+        engine.run([])
