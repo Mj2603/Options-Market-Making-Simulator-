@@ -1,3 +1,18 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "options-market-making-simulator"
+version = "0.1.0"
+description = "Research simulator for option pricing, quoting, execution and inventory"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24,<2.0",
+    "pandas>=2.0,<3.0",
+    "scipy>=1.10,<2.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
