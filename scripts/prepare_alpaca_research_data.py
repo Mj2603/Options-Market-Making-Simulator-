@@ -5,6 +5,7 @@ inferred from trade price versus the contemporaneous midpoint, with a tick
 test for midpoint prints. Ambiguous first midpoint prints are discarded.
 """
 import argparse
+import json
 from datetime import datetime, time
 from pathlib import Path
 import re
@@ -35,6 +36,7 @@ def prepare_events(
     settlement_time: str,
     quote_tolerance_seconds: float = 60.0,
     contract_multiplier: float = 100.0,
+    source_metadata_path: Path | None = None,
 ):
     quotes = pd.read_csv(quotes_path)
     trades = pd.read_csv(trades_path)
@@ -93,14 +95,22 @@ def prepare_events(
     if quotes.empty:
         raise ValueError("not enough quote history to initialize EWMA volatility")
 
-    metadata = {
+    contract_metadata_map = {
         symbol: contract_metadata(symbol, settlement_time)
         for symbol in quotes["symbol"].unique()
     }
+    if source_metadata_path is None:
+        source_metadata_path = quotes_path.parent / "metadata.json"
+    source_info = (
+        json.loads(source_metadata_path.read_text(encoding="utf-8"))
+        if source_metadata_path.exists() else {}
+    )
+    provider = source_info.get("provider", "unknown")
+    feed = source_info.get("feed", "unknown")
 
     quote_rows = []
     for _, row in quotes.iterrows():
-        underlying, expiry_local, option_type, strike = metadata[row["symbol"]]
+        underlying, expiry_local, option_type, strike = contract_metadata_map[row["symbol"]]
         tte = (expiry_local.astimezone(ZoneInfo("UTC")) - row["timestamp"]).total_seconds() / (365.25 * 86400.0)
         if tte <= 0:
             continue
@@ -122,7 +132,9 @@ def prepare_events(
             "trade_size": 0.0,
             "aggressor_side": "",
             "contract_multiplier": contract_multiplier,
-            "data_feed_note": "Alpaca feed selected at download; check raw source metadata",
+            "data_provider": provider,
+            "data_feed": feed,
+            "data_feed_note": source_info.get("feed_warning", "Source feed metadata unavailable"),
         })
     quote_events = pd.DataFrame(quote_rows)
     if quote_events.empty:
@@ -162,7 +174,7 @@ def prepare_events(
                 previous_price = row["p"]
                 continue
             previous_price = row["p"]
-            underlying, expiry_local, option_type, strike = metadata[symbol]
+            underlying, expiry_local, option_type, strike = contract_metadata_map[symbol]
             tte = (expiry_local.astimezone(ZoneInfo("UTC")) - row["timestamp"]).total_seconds() / (365.25 * 86400.0)
             if tte <= 0:
                 continue
@@ -184,6 +196,8 @@ def prepare_events(
                 "trade_size": row["s"],
                 "aggressor_side": side,
                 "contract_multiplier": contract_multiplier,
+                "data_provider": provider,
+                "data_feed": feed,
                 "data_feed_note": "Aggressor side inferred from midpoint/tick rule",
             })
     combined = pd.concat(
