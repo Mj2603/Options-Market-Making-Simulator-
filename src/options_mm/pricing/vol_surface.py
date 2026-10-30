@@ -142,7 +142,7 @@ class SVIVolatilitySurface:
 class EWMAVolatility:
     """Causal annualized volatility forecast from observed log returns."""
 
-    def __init__(self, decay: float = 0. is not None, periods_per_year: float = 252.0):
+    def __init__(self, decay: float = 0.94, periods_per_year: float = 252.0):
         if not 0.0 < decay < 1.0:
             raise ValueError("decay must be between zero and one")
         if not math.isfinite(periods_per_year) or periods_per_year <= 0.0:
