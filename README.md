@@ -17,7 +17,7 @@ The current implementation contains the following research components:
 | Quote construction | Fixed-spread baseline plus an inventory-aware Avellaneda–Stoikov reservation-price model |
 | Execution model | Deterministic order rules plus event-driven trade-print matching with configurable participation, discrete quantity steps, and inventory caps |
 | Inventory | Per-instrument position tracking, limit checks, and fill-size caps in the event-driven engine |
-| P&L | Average-cost realized P&L and mark-to-market unrealized P&L |
+| P&L | Average-cost accounting with contract multipliers, per-contract commissions, gross P&L, and net P&L |
 | Delta hedging | Net option delta aggregation and theoretical underlying hedge quantity |
 | Volatility regime | Threshold-based classification using the standard deviation of supplied returns |
 | Data ingestion | CSV validation, row-specific time-to-expiry, quote filtering, and mid/spread derivation |
@@ -61,7 +61,7 @@ The main package is under `src/options_mm/`:
 - `execution/` — simplified order-fill rules
 - `simulation/` — ordered market-event replay, resting-quote matching, inventory-aware fill caps, and P&L snapshots
 - `risk/` — inventory state and position-limit checks
-- `metrics/` — realized and mark-to-market P&L
+- `metrics/` — average-cost realized/unrealized P&L, contract multipliers, commissions, and net P&L
 - `hedge/` — net-delta and hedge-quantity calculations
 - `experiments/` — basic volatility-regime experiments
 
@@ -118,7 +118,7 @@ This is an intentionally limited research prototype. In particular:
 - The Avellaneda–Stoikov module now skews quotes for signed inventory and widens the model spread with price volatility and remaining horizon. It assumes constant volatility and exponential order arrivals; its intensity parameter is not calibrated from data. It does not model queue position, adverse selection, or market impact.
 - The event-driven simulator matches trade prints against quotes resting from the prior event and applies a configurable participation fraction. It supports partial fills through trade-size and order-size caps, but does not simulate queue priority, full order-book depth, latency, cancellations, market impact, or adverse selection. Its fill assumptions are a sensitivity model, not exchange-level execution.
 - The event-driven engine caps fills so simulated positions remain within the configured absolute inventory limit. The standalone execution API is still not wired into a comprehensive order-management or pre-trade risk-control system.
-- P&L accounting is simplified and does not yet include exchange fees, rebates, contract multipliers, funding, exercise/assignment, or corporate actions.
+- P&L now supports configurable contract multipliers and per-contract commissions. It still omits exchange rebates, funding, exercise/assignment cash flows, and corporate actions.
 - Pricing is European Black–Scholes only. Input domains and deterministic zero-volatility / expiry cases are validated, but the implementation does not calibrate an implied-volatility surface or model stochastic volatility.
 - The regime detector is a simple threshold baseline, not a validated forecasting model.
 - A passing unit-test suite verifies the tested software behavior. It does not establish trading profitability, execution quality, or production readiness.
