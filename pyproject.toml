@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-parquet = ["pyarrow>=14.0.1"]
+parquet = ["pyarrow>=14.0.1,<24"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
