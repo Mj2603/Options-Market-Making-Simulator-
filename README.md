@@ -1,8 +1,14 @@
 # Options Market-Making Simulator
 
-A Python research prototype for studying the core mechanics of options market making: theoretical valuation, quote construction, simplified execution, inventory accounting, P&L attribution, and delta hedging.
+A Python research prototype for studying options market making through theoretical valuation, quote construction, simplified execution, inventory accounting, P&L attribution, and delta hedging.
 
 The repository is organized as a modular simulation toolkit. It is intended for quantitative finance experimentation and software development practice—not live trading, broker connectivity, or production execution.
+
+## Current branch and proposed extension
+
+The current `main` branch is a Python prototype with fixed-spread quoting and simplified deterministic execution. It is not a C++ limit-order-book simulator and does not include an RL market-maker comparison.
+
+[PR #10](https://github.com/Mj2603/Options-Market-Making-Simulator-/pull/10) is open and unmerged. It proposes a Python event-driven research layer with queue/latency proxies, inventory-aware quoting, portfolio risk, transaction costs, and walk-forward evaluation. These proposed features are not part of `main` until the PR is reviewed and merged.
 
 [![Python CI](https://github.com/Mj2603/Options-Market-Making-Simulator-/actions/workflows/python-ci.yml/badge.svg)](https://github.com/Mj2603/Options-Market-Making-Simulator-/actions/workflows/python-ci.yml)
 [![CI](https://github.com/Mj2603/Options-Market-Making-Simulator-/actions/workflows/ci.yml/badge.svg)](https://github.com/Mj2603/Options-Market-Making-Simulator-/actions/workflows/ci.yml)
