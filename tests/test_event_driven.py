@@ -248,3 +248,34 @@ def test_open_initial_position_requires_a_final_fair_value():
     )
     with pytest.raises(ValueError, match="missing final fair value"):
         engine.run([])
+
+
+
+def test_simulation_result_reports_gross_and_net_pnl():
+    model = AvellanedaStoikovQuoteModel()
+    ask = model.quote(10.0, 0.0, 0.5, 0.25).ask
+    pnl = PnLManager(
+        commission_per_contract=0.5,
+        contract_multipliers={"OPT-100-C": 100.0},
+    )
+    result = EventDrivenBacktest(
+        quote_model=model,
+        pnl_manager=pnl,
+        order_size=2.0,
+        participation_rate=1.0,
+    ).run(
+        [
+            event(1.0),
+            event(
+                2.0,
+                trade_price=ask,
+                trade_size=2.0,
+                aggressor_side="buy",
+            ),
+            event(3.0, fair_value=9.0),
+        ]
+    )
+    assert result.fees_paid == pytest.approx(1.0)
+    assert result.gross_total_pnl == pytest.approx(200.0 * (ask - 9.0))
+    assert result.net_total_pnl == pytest.approx(result.gross_total_pnl - 1.0)
+    assert result.total_pnl == pytest.approx(result.net_total_pnl)
