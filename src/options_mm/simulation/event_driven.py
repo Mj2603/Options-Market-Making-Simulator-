@@ -274,11 +274,12 @@ class EventDrivenBacktest:
             raise ValueError(
                 "portfolio risk control requires underlying and delta/gamma/vega/theta on every fill event"
             )
+        effective_multiplier = self._effective_contract_multiplier(event)
         proposed = OptionRiskPosition(
             instrument=event.instrument,
             underlying=event.underlying,
             quantity=signed_size,
-            multiplier=self._effective_contract_multiplier(event),
+            multiplier=effective_multiplier,
             delta=event.delta,
             gamma=event.gamma,
             vega=event.vega,
@@ -296,7 +297,7 @@ class EventDrivenBacktest:
             instrument=event.instrument,
             underlying=event.underlying,
             quantity=quantity,
-            multiplier=event.contract_multiplier,
+            multiplier=effective_multiplier,
             delta=event.delta,
             gamma=event.gamma,
             vega=event.vega,
