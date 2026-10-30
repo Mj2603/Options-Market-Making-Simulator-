@@ -392,6 +392,12 @@ class EventDrivenBacktest:
             ):
                 raise ValueError("events must be sorted by non-decreasing timestamp")
             previous_timestamp = event.timestamp
+            if self.queue_model is not None and (
+                event.market_bid is None or event.market_ask is None
+            ):
+                raise ValueError(
+                    "queue-aware simulation requires market_bid and market_ask on every event"
+                )
 
             if self.portfolio_risk_manager is not None:
                 current_risk = self._risk_positions.get(event.instrument)
