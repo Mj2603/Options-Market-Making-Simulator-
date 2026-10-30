@@ -153,8 +153,13 @@ class EventDrivenBacktest:
             inventory_quantity = self.inventory.position(instrument)
             pnl_state = self.pnl.positions.get(instrument, {})
             pnl_quantity = float(pnl_state.get("qty", 0.0))
-            if not math.isfinite(pnl_quantity) or not math.isclose(
-                inventory_quantity, pnl_quantity, rel_tol=0.0, abs_tol=1e-9
+            pnl_average_price = float(pnl_state.get("avg", 0.0))
+            if (
+                not math.isfinite(pnl_quantity)
+                or not math.isfinite(pnl_average_price)
+                or not math.isclose(
+                    inventory_quantity, pnl_quantity, rel_tol=0.0, abs_tol=1e-9
+                )
             ):
                 raise ValueError(
                     "initial inventory and PnL positions must be consistent; "
@@ -250,6 +255,18 @@ class EventDrivenBacktest:
                 inventory=self.inventory.position(event.instrument),
                 price_volatility=event.price_volatility,
                 time_to_horizon=event.time_to_horizon,
+            )
+
+        unmarked_positions = [
+            instrument
+            for instrument, state in self.pnl.positions.items()
+            if float(state.get("qty", 0.0)) != 0.0
+            and instrument not in last_fair_values
+        ]
+        if unmarked_positions:
+            raise ValueError(
+                "missing final fair value for open positions: "
+                + ", ".join(sorted(unmarked_positions))
             )
 
         unrealized = self.pnl.mark_to_market(last_fair_values)
