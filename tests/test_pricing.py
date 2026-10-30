@@ -43,7 +43,7 @@ def test_zero_volatility_uses_discounted_strike():
     S, K, r, T = 100.0, 105.0, 0.05, 1.0
     call = call_price_greeks(S, K, r, 0.0, T)
     put = put_price_greeks(S, K, r, 0.0, T)
-    discounted_strike = K * __import__("math").exp(-r * T)
+    discounted_strike = K * math.exp(-r * T)
     assert call.price == pytest.approx(max(S - discounted_strike, 0.0))
     assert put.price == pytest.approx(max(discounted_strike - S, 0.0))
     assert call.gamma == call.vega == call.theta == 0.0
