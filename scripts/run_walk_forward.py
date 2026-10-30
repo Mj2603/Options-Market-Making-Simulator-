@@ -8,6 +8,7 @@ import pandas as pd
 
 from options_mm.data.research import load_research_events_csv, to_market_events
 from options_mm.experiments.walk_forward import walk_forward_compare
+from options_mm.risk.portfolio import PortfolioRiskManager
 
 
 def main():
@@ -25,11 +26,30 @@ def main():
     parser.add_argument("--latency-seconds", type=float, default=0.0)
     parser.add_argument("--queue-aware", action="store_true")
     parser.add_argument("--commission-per-contract", type=float, default=0.65)
+    parser.add_argument("--max-abs-delta", type=float)
+    parser.add_argument("--max-abs-gamma", type=float)
+    parser.add_argument("--max-abs-vega", type=float)
+    parser.add_argument("--max-gross-market-value", type=float)
+    parser.add_argument("--max-underlying-gross-value", type=float)
     args = parser.parse_args()
 
     event_frame = load_research_events_csv(args.events)
     events = to_market_events(event_frame)
     panel = pd.read_csv(args.arrival_panel)
+    risk_values = {
+        "max_abs_delta": args.max_abs_delta,
+        "max_abs_gamma": args.max_abs_gamma,
+        "max_abs_vega": args.max_abs_vega,
+        "max_gross_market_value": args.max_gross_market_value,
+        "max_underlying_gross_value": args.max_underlying_gross_value,
+    }
+    portfolio_risk_manager = (
+        PortfolioRiskManager(**{
+            key: value for key, value in risk_values.items() if value is not None
+        })
+        if any(value is not None for value in risk_values.values())
+        else None
+    )
     results = walk_forward_compare(
         events,
         panel,
@@ -43,6 +63,7 @@ def main():
         latency_seconds=args.latency_seconds,
         queue_aware=args.queue_aware,
         commission_per_contract=args.commission_per_contract,
+        portfolio_risk_manager=portfolio_risk_manager,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     payload = [asdict(fold) for fold in results]
