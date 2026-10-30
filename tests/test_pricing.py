@@ -77,3 +77,21 @@ def test_invalid_inputs_are_rejected(args):
         call_price_greeks(*args)
     with pytest.raises(ValueError):
         put_price_greeks(*args)
+
+
+def test_put_call_parity_with_continuous_dividend_yield():
+    S, K, r, q, sigma, T = 100.0, 105.0, 0.04, 0.015, 0.25, 0.75
+    call = call_price_greeks(S, K, r, sigma, T, q)
+    put = put_price_greeks(S, K, r, sigma, T, q)
+    expected = S * math.exp(-q * T) - K * math.exp(-r * T)
+    assert call.price - put.price == pytest.approx(expected, abs=1e-10)
+
+
+def test_zero_volatility_discounted_spot_and_strike():
+    S, K, r, q, T = 100.0, 100.0, 0.05, 0.02, 1.0
+    call = call_price_greeks(S, K, r, 0.0, T, q)
+    put = put_price_greeks(S, K, r, 0.0, T, q)
+    discounted_spot = S * math.exp(-q * T)
+    discounted_strike = K * math.exp(-r * T)
+    assert call.price == pytest.approx(max(discounted_spot - discounted_strike, 0.0))
+    assert put.price == pytest.approx(max(discounted_strike - discounted_spot, 0.0))
