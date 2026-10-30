@@ -176,6 +176,7 @@ def price_with_surface(
     rate: float,
     expiry_years: float,
     option_type: str,
+    dividend_yield: float = 0.0,
 ):
     """Price a European option using surface IV and Black–Scholes Greeks.
 
@@ -191,7 +192,11 @@ def price_with_surface(
         raise ValueError("option_type must be 'call' or 'put'")
     volatility = surface.implied_volatility(forward, strike, expiry_years)
     if option_type == "call":
-        greeks = call_price_greeks(spot, strike, rate, volatility, expiry_years)
+        greeks = call_price_greeks(
+            spot, strike, rate, volatility, expiry_years, dividend_yield
+        )
     else:
-        greeks = put_price_greeks(spot, strike, rate, volatility, expiry_years)
+        greeks = put_price_greeks(
+            spot, strike, rate, volatility, expiry_years, dividend_yield
+        )
     return greeks, volatility
