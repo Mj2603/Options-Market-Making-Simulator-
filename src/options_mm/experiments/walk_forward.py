@@ -13,6 +13,7 @@ from options_mm.market.avellaneda_stoikov import AvellanedaStoikovQuoteModel
 from options_mm.market.policies import FixedSpreadQuoteModel
 from options_mm.metrics.pnl import PnLManager
 from options_mm.metrics.research import performance_summary
+from options_mm.risk.portfolio import PortfolioRiskManager
 from options_mm.simulation.event_driven import EventDrivenBacktest, MarketEvent
 
 
@@ -49,6 +50,7 @@ def _select_gamma(
     inventory_penalty: float,
     queue_model,
     commission_per_contract: float,
+    portfolio_risk_manager: PortfolioRiskManager | None,
 ) -> float:
     best_gamma = None
     best_score = -math.inf
@@ -63,6 +65,7 @@ def _select_gamma(
             participation_rate=participation_rate,
             queue_model=queue_model,
             pnl_manager=PnLManager(commission_per_contract=commission_per_contract),
+            portfolio_risk_manager=portfolio_risk_manager,
         ).run(training_events)
         score = result.net_total_pnl - inventory_penalty * _inventory_penalty(result)
         if score > best_score:
@@ -113,6 +116,7 @@ def walk_forward_compare(
     latency_seconds: float = 0.0,
     queue_aware: bool = False,
     commission_per_contract: float = 0.65,
+    portfolio_risk_manager: PortfolioRiskManager | None = None,
 ) -> list[WalkForwardFold]:
     """Run expanding-window tests with calibration/tuning restricted to train.
 
@@ -195,6 +199,7 @@ def walk_forward_compare(
             inventory_penalty,
             queue_model,
             commission_per_contract,
+            portfolio_risk_manager,
         )
         selected_spread = _select_fixed_spread(
             train_events,
@@ -204,6 +209,7 @@ def walk_forward_compare(
             inventory_penalty,
             queue_model,
             commission_per_contract,
+            portfolio_risk_manager,
         )
 
         fixed_result = EventDrivenBacktest(
@@ -212,6 +218,7 @@ def walk_forward_compare(
             participation_rate=participation_rate,
             queue_model=queue_model,
             pnl_manager=PnLManager(commission_per_contract=commission_per_contract),
+            portfolio_risk_manager=portfolio_risk_manager,
         ).run(test_events)
         as_result = EventDrivenBacktest(
             quote_model=AvellanedaStoikovQuoteModel(
