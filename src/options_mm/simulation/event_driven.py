@@ -198,10 +198,11 @@ class EventDrivenBacktest:
         self.quantity_step = self._positive_finite("quantity_step", quantity_step)
         self.queue_model = queue_model
         self.portfolio_risk_manager = portfolio_risk_manager
+        initial_risk_positions = list(initial_risk_positions)
         self._risk_positions = {
             item.instrument: item for item in initial_risk_positions
         }
-        if len(self._risk_positions) != len(list(initial_risk_positions)):
+        if len(self._risk_positions) != len(initial_risk_positions):
             raise ValueError("initial risk positions must have unique instruments")
         if self.participation_rate > 1.0:
             raise ValueError("participation_rate must not exceed 1")
@@ -392,7 +393,8 @@ class EventDrivenBacktest:
                 raise ValueError("events must be sorted by non-decreasing timestamp")
             previous_timestamp = event.timestamp
 
-            resting = resting_quotes.get(event.instrument)
+            previous_quote = resting_quotes.get(event.instrument)
+            resting = previous_quote
             if resting is not None:
                 fill = self._match(
                     event,
@@ -409,7 +411,17 @@ class EventDrivenBacktest:
                 price_volatility=event.price_volatility,
                 time_to_horizon=event.time_to_horizon,
             )
-            if self.queue_model is not None:
+            if self.queue_model is not None and (
+                previous_quote is None
+                or not math.isclose(
+                    previous_quote.bid, resting_quotes[event.instrument].bid,
+                    rel_tol=0.0, abs_tol=1e-12
+                )
+                or not math.isclose(
+                    previous_quote.ask, resting_quotes[event.instrument].ask,
+                    rel_tol=0.0, abs_tol=1e-12
+                )
+            ):
                 if event.market_bid is None or event.market_ask is None:
                     raise ValueError(
                         "queue-aware simulation requires market_bid and market_ask on every event"
