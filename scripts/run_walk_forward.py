@@ -29,6 +29,7 @@ def main():
     parser.add_argument("--max-abs-delta", type=float)
     parser.add_argument("--max-abs-gamma", type=float)
     parser.add_argument("--max-abs-vega", type=float)
+    parser.add_argument("--max-abs-theta", type=float)
     parser.add_argument("--max-gross-market-value", type=float)
     parser.add_argument("--max-underlying-gross-value", type=float)
     args = parser.parse_args()
@@ -40,6 +41,7 @@ def main():
         "max_abs_delta": args.max_abs_delta,
         "max_abs_gamma": args.max_abs_gamma,
         "max_abs_vega": args.max_abs_vega,
+        "max_abs_theta": args.max_abs_theta,
         "max_gross_market_value": args.max_gross_market_value,
         "max_underlying_gross_value": args.max_underlying_gross_value,
     }
