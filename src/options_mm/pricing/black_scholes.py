@@ -90,8 +90,14 @@ def _deterministic_greeks(
 
 
 def _d1(S: float, K: float, r: float, sigma: float, T: float) -> float:
-    numerator = math.log(S) - math.log(K) + (r + 0.5 * sigma**2) * T
-    return numerator / (sigma * math.sqrt(T))
+    try:
+        numerator = math.log(S) - math.log(K) + (r + 0.5 * sigma**2) * T
+        value = numerator / (sigma * math.sqrt(T))
+    except (OverflowError, ZeroDivisionError) as exc:
+        raise ValueError("inputs produce an unstable d1 value") from exc
+    if not math.isfinite(value):
+        raise ValueError("inputs produce a non-finite d1 value")
+    return value
 
 
 def _d2(d1: float, sigma: float, T: float) -> float:
