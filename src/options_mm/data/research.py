@@ -27,7 +27,7 @@ def load_research_events_csv(path: str | Path) -> pd.DataFrame:
         raise ValueError(f"missing research columns: {', '.join(sorted(missing))}")
     frame = frame.copy()
     timestamp_text = frame["timestamp"].astype(str).str.strip()
-    if not timestamp_text.str.contains(r"(?:Z|[+-]\\d{2}:?\\d{2})$", case=False, regex=True).all():
+    if not timestamp_text.str.contains(r"(?:Z|[+-]\d{2}:?\d{2})$", case=False, regex=True).all():
         raise ValueError("timestamps must include an explicit UTC marker or timezone offset")
     frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
     if frame["timestamp"].isna().any():
