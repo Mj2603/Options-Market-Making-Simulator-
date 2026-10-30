@@ -97,6 +97,19 @@ pytest
 
 GitHub Actions currently tests the project on Python 3.10, 3.11, and 3.12. The workflows install the package and test dependencies before running pytest.
 
+## Synthetic event-driven example
+
+Run the deterministic example from the repository root:
+
+```bash
+python scripts/run_synthetic_backtest.py
+```
+
+The example demonstrates quote updates, trade-print matching, partial fills,
+inventory limits, contract multipliers, commissions, and gross/net P&L. It uses
+hand-constructed synthetic events; its output is not historical evidence or a
+strategy performance estimate.
+
 ## Market-data contract
 
 The canonical CSV loader expects these columns:
