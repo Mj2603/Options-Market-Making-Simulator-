@@ -67,6 +67,15 @@ def to_market_events(frame: pd.DataFrame):
         timestamp = pd.Timestamp(row.timestamp)
         if timestamp.tzinfo is None:
             raise ValueError("event timestamps must be timezone-aware")
+
+        def optional_float(name):
+            value = getattr(row, name, None)
+            return None if value is None or pd.isna(value) else float(value)
+
+        def optional_text(name):
+            value = getattr(row, name, None)
+            return None if value is None or pd.isna(value) else str(value)
+
         events.append(
             MarketEvent(
                 timestamp=float(timestamp.timestamp()),
@@ -77,6 +86,16 @@ def to_market_events(frame: pd.DataFrame):
                 trade_price=None if pd.isna(row.trade_price) else float(row.trade_price),
                 trade_size=float(row.trade_size),
                 aggressor_side=None if float(row.trade_size) == 0 else str(row.aggressor_side),
+                market_bid=optional_float("market_bid"),
+                market_ask=optional_float("market_ask"),
+                market_bid_size=optional_float("market_bid_size") or 0.0,
+                market_ask_size=optional_float("market_ask_size") or 0.0,
+                underlying=optional_text("underlying"),
+                delta=optional_float("delta"),
+                gamma=optional_float("gamma"),
+                vega=optional_float("vega"),
+                theta=optional_float("theta"),
+                contract_multiplier=optional_float("contract_multiplier") or 1.0,
             )
         )
     return events
