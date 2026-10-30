@@ -79,10 +79,9 @@ def test_trade_that_does_not_cross_resting_quote_does_not_fill():
 
 def test_inventory_limit_caps_partial_fill():
     inventory = InventoryManager(max_position=3.0)
-    inventory.on_fill("OPT-100-C", 2.0)
     result = EventDrivenBacktest(
         inventory_manager=inventory,
-        order_size=10.0,
+        order_size=2.0,
         participation_rate=1.0,
     ).run(
         [
@@ -90,13 +89,18 @@ def test_inventory_limit_caps_partial_fill():
             event(
                 2.0,
                 trade_price=0.0,
+                trade_size=2.0,
+                aggressor_side="sell",
+            ),
+            event(
+                3.0,
+                trade_price=0.0,
                 trade_size=100.0,
                 aggressor_side="sell",
             ),
         ]
     )
-    assert len(result.fills) == 1
-    assert result.fills[0].size == pytest.approx(1.0)
+    assert [fill.size for fill in result.fills] == pytest.approx([2.0, 1.0])
     assert dict(result.final_positions)["OPT-100-C"] == pytest.approx(3.0)
 
 
@@ -189,30 +193,43 @@ def test_first_event_cannot_fill_against_a_quote_not_yet_posted():
 
 def test_inventory_limit_also_caps_sell_fills_for_short_positions():
     inventory = InventoryManager(max_position=3.0)
-    inventory.on_fill("OPT-100-C", -2.0)
     model = AvellanedaStoikovQuoteModel()
-    ask = model.quote(10.0, -2.0, 0.5, 0.25).ask
+    ask_at_zero_inventory = model.quote(10.0, 0.0, 0.5, 0.25).ask
+    ask_at_short_inventory = model.quote(10.0, -2.0, 0.5, 0.25).ask
     result = EventDrivenBacktest(
         inventory_manager=inventory,
-        order_size=10.0,
+        order_size=2.0,
         participation_rate=1.0,
     ).run(
         [
             event(1.0),
             event(
                 2.0,
-                trade_price=ask,
+                trade_price=ask_at_zero_inventory,
+                trade_size=2.0,
+                aggressor_side="buy",
+            ),
+            event(
+                3.0,
+                trade_price=ask_at_short_inventory,
                 trade_size=100.0,
                 aggressor_side="buy",
             ),
         ]
     )
-    assert len(result.fills) == 1
-    assert result.fills[0].side == "sell"
-    assert result.fills[0].size == pytest.approx(1.0)
+    assert [fill.size for fill in result.fills] == pytest.approx([2.0, 1.0])
+    assert all(fill.side == "sell" for fill in result.fills)
     assert dict(result.final_positions)["OPT-100-C"] == pytest.approx(-3.0)
 
 
 def test_non_finite_market_event_timestamp_is_rejected():
     with pytest.raises(ValueError, match="timestamp"):
         event(float("nan"))
+
+
+
+def test_initial_inventory_and_pnl_state_must_match():
+    inventory = InventoryManager(max_position=10.0)
+    inventory.on_fill("OPT-100-C", 2.0)
+    with pytest.raises(ValueError, match="must be consistent"):
+        EventDrivenBacktest(inventory_manager=inventory)
