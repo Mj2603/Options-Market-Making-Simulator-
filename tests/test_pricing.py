@@ -1,3 +1,7 @@
+import math
+
+import pytest
+
 from options_mm.pricing.black_scholes import call_price_greeks, put_price_greeks
 
 
@@ -9,9 +13,16 @@ def test_call_put_parity():
     T = 30 / 365.25
     call = call_price_greeks(S, K, r, sigma, T)
     put = put_price_greeks(S, K, r, sigma, T)
-    lhs = call.price - put.price
-    rhs = S - K * (1.0 - r * T)
-    assert abs(lhs - rhs) < 5.0
+    assert call.price - put.price == pytest.approx(
+        S - K * math.exp(-r * T), abs=1e-10
+    )
+
+
+def test_reference_black_scholes_prices():
+    call = call_price_greeks(100.0, 100.0, 0.05, 0.2, 1.0)
+    put = put_price_greeks(100.0, 100.0, 0.05, 0.2, 1.0)
+    assert call.price == pytest.approx(10.450583572185565, abs=1e-10)
+    assert put.price == pytest.approx(5.573526022256971, abs=1e-10)
 
 
 def test_delta_monotonic():
@@ -26,3 +37,43 @@ def test_delta_monotonic():
     d1 = call_price_greeks(S1, K, r, sigma, T).delta
     d2 = call_price_greeks(S2, K, r, sigma, T).delta
     assert d0 < d1 < d2
+
+
+def test_zero_volatility_uses_discounted_strike():
+    S, K, r, T = 100.0, 105.0, 0.05, 1.0
+    call = call_price_greeks(S, K, r, 0.0, T)
+    put = put_price_greeks(S, K, r, 0.0, T)
+    discounted_strike = K * math.exp(-r * T)
+    assert call.price == pytest.approx(max(S - discounted_strike, 0.0))
+    assert put.price == pytest.approx(max(discounted_strike - S, 0.0))
+    assert call.gamma == call.vega == call.theta == 0.0
+    assert put.gamma == put.vega == put.theta == 0.0
+
+
+def test_expiry_prices_equal_intrinsic_value():
+    call = call_price_greeks(110.0, 100.0, 0.05, 0.2, 0.0)
+    put = put_price_greeks(90.0, 100.0, 0.05, 0.2, 0.0)
+    assert call.price == 10.0
+    assert put.price == 10.0
+    assert call.delta == 1.0
+    assert put.delta == -1.0
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        (0.0, 100.0, 0.01, 0.2, 1.0),
+        (-1.0, 100.0, 0.01, 0.2, 1.0),
+        (100.0, 0.0, 0.01, 0.2, 1.0),
+        (100.0, -1.0, 0.01, 0.2, 1.0),
+        (100.0, 100.0, 0.01, -0.2, 1.0),
+        (100.0, 100.0, 0.01, 0.2, -1.0),
+        (float("nan"), 100.0, 0.01, 0.2, 1.0),
+        (100.0, 100.0, float("inf"), 0.2, 1.0),
+    ],
+)
+def test_invalid_inputs_are_rejected(args):
+    with pytest.raises(ValueError):
+        call_price_greeks(*args)
+    with pytest.raises(ValueError):
+        put_price_greeks(*args)

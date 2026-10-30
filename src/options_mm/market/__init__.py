@@ -1,6 +1,14 @@
-"""Market primitives and simple engines for options market-making (Phase 3+).
+"""Market primitives and quote-construction models."""
 
-This package contains lightweight components used by the demo and tests.
-"""
+from options_mm.market.avellaneda_stoikov import (
+    AvellanedaStoikovQuoteModel,
+    InventoryAwareQuote,
+)
+from options_mm.market.quote_engine import Quote, QuoteEngine
 
-__all__ = ["quote_engine"]
+__all__ = [
+    "AvellanedaStoikovQuoteModel",
+    "InventoryAwareQuote",
+    "Quote",
+    "QuoteEngine",
+]
