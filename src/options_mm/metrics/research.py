@@ -70,13 +70,18 @@ def performance_summary(
         raise ValueError("periods_per_year must be positive and finite")
 
     event_list = list(events)
-    equity = pd.DataFrame(
-        [
-            {"timestamp": pd.to_datetime(point.timestamp, unit="s", utc=True),
-             "equity": initial_capital + point.net_pnl}
-            for point in result.equity_curve
-        ]
-    )
+    equity_rows = [
+        {"timestamp": pd.to_datetime(point.timestamp, unit="s", utc=True),
+         "equity": initial_capital + point.net_pnl}
+        for point in result.equity_curve
+    ]
+    if equity_rows:
+        first_day = equity_rows[0]["timestamp"].floor("D")
+        equity_rows.append({
+            "timestamp": first_day - pd.Timedelta(days=1),
+            "equity": initial_capital,
+        })
+    equity = pd.DataFrame(equity_rows)
     if equity.empty:
         daily_returns = pd.Series(dtype=float)
         max_drawdown = 0.0
@@ -127,4 +132,7 @@ def performance_summary(
         "markout_1s": markouts.get(1.0, {}).get("mean"),
         "markout_5s": markouts.get(5.0, {}).get("mean"),
         "markout_30s": markouts.get(30.0, {}).get("mean"),
+        "adverse_selection_rate_1s": markouts.get(1.0, {}).get("adverse_selection_rate"),
+        "adverse_selection_rate_5s": markouts.get(5.0, {}).get("adverse_selection_rate"),
+        "adverse_selection_rate_30s": markouts.get(30.0, {}).get("adverse_selection_rate"),
     }
