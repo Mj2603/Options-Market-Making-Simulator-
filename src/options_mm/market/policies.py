@@ -52,12 +52,12 @@ class InstrumentAwareASQuoteModel:
 
         self.default_model = AvellanedaStoikovQuoteModel(
             risk_aversion=risk_aversion,
-            order_arrival_intensity=default_price_sensitivity,
+            arrival_price_sensitivity=default_price_sensitivity,
         )
         self.models = {
             instrument: AvellanedaStoikovQuoteModel(
                 risk_aversion=risk_aversion,
-                order_arrival_intensity=sensitivity,
+                arrival_price_sensitivity=sensitivity,
             )
             for instrument, sensitivity in price_sensitivity_by_instrument.items()
         }
