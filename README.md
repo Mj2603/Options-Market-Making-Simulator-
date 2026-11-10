@@ -22,7 +22,6 @@ The current implementation contains the following research components:
 | Volatility | Causal EWMA estimator, threshold regime baseline, and calibrated raw-SVI surface interpolation |
 | Data ingestion | CSV validation, Alpaca historical quote/trade downloader, causal normalization, and arrival-exposure panel |
 
-The modules are deliberately separated so that individual models can be tested and replaced as the simulator becomes more realistic.
 
 ## Architecture
 
@@ -101,10 +100,7 @@ GitHub Actions currently tests the project on Python 3.10, 3.11, and 3.12. The w
 
 The repository includes a paginated Alpaca historical options downloader, a
 backward-as-of quote/trade normalizer, an arrival-calibration panel builder,
-and a walk-forward runner. Raw market data are not committed. Read
-[docs/data_sources.md](docs/data_sources.md) before downloading: Alpaca's free
-indicative feed is not OPRA and is delayed/modified; OPRA requires a qualifying
-subscription.
+and a walk-forward runner. Raw market data are not committed. 
 
 The complete setup and assumptions are documented in
 [docs/research_framework.md](docs/research_framework.md).
@@ -127,10 +123,7 @@ python scripts/run_walk_forward.py --splits 3 --train-fraction 0.6
 ```
 
 The data normalizer estimates option-premium volatility with a causal EWMA
-and infers trade aggressor side from midpoint/tick rules. These are labelled
-proxies, not vendor-provided Greeks or official aggressor classifications.
-The arrival panel uses trade-through counts and is not an observed queue fill
-dataset.
+and infers trade aggressor side from midpoint/tick rules.
 
 ## Synthetic event-driven example
 
@@ -142,8 +135,7 @@ python scripts/run_synthetic_backtest.py
 
 The example demonstrates quote updates, trade-print matching, partial fills,
 inventory limits, contract multipliers, commissions, and gross/net P&L. It uses
-hand-constructed synthetic events; its output is not historical evidence or a
-strategy performance estimate.
+hand-constructed synthetic events
 
 ## Market-data contract
 
@@ -152,40 +144,3 @@ The canonical CSV loader expects these columns:
 ```text
 timestamp, expiry, underlying, strike, bid, ask
 ```
-
-Optional source fields (for example implied volatility or displayed sizes) are retained. The loader validates required fields and market values, calculates time-to-expiry for each observation, filters crossed and expired quotes, and derives midpoint and quoted spread.
-
-If `expiry` contains date-only values, pass the contract's actual settlement time through `expiry_time`. Do not assume a universal expiry convention: AM- and PM-settled contracts can have materially different time-to-expiry.
-
-No historical market-data file is bundled with this repository. The loader can be tested using the synthetic fixtures in `tests/test_loader.py`. A real-data research run requires a correctly mapped dataset and documented contract metadata.
-
-## Research limitations
-
-This is an intentionally limited research prototype. The new modules make the
-research pipeline reproducible, but they do not remove the following limits:
-
-- The arrival model is calibrated from a Poisson composite-likelihood panel of trade-through events. Its price-sensitivity parameter is fitted from data; risk aversion is selected on the training window by a declared P&L/inventory objective. The calibration is not an exchange fill-probability model.
-- The optional L1 queue model initializes queue ahead from displayed NBBO size and applies configurable latency. It does not reconstruct order-level queue changes, cancellations, hidden liquidity, full depth, exchange routing, or cancel/replace races. It is a sensitivity proxy, not exchange-level execution.
-- The event-driven engine caps fills so simulated positions remain within the configured absolute inventory limit. The standalone execution API is still not wired into a comprehensive order-management or pre-trade risk-control system.
-- P&L now supports configurable contract multipliers and per-contract commissions. It still omits exchange rebates, funding, exercise/assignment cash flows, and corporate actions.
-- The SVI surface is a raw-SVI interpolation baseline and does not guarantee calendar or butterfly arbitrage freedom. The EWMA estimator is a simple causal forecast, not a stochastic-volatility model. Black–Scholes valuation remains European and does not model American exercise or discrete dividends.
-- The data normalizer infers aggressor side from trade price versus midpoint and a tick rule. Its option-premium EWMA is a proxy. Adjusted contracts, AM-settled contracts, and non-standard multipliers require explicit contract metadata.
-- Walk-forward tests prevent training/test timestamp overlap, but results are only meaningful with a sufficiently long, representative historical sample, reliable fees, and vendor-quality quote/trade data. A passing unit-test suite does not establish trading profitability or production readiness.
-
-Consequently, the project should not be connected to a live brokerage account or used to make trading decisions.
-
-## Roadmap
-
-The next engineering priorities are:
-
-1. Validate the complete pipeline on licensed historical OPRA data and preserve source/feed metadata.
-2. Replace midpoint/tick-rule aggressor inference with vendor-provided trade-side classification where available.
-3. Upgrade the L1 queue proxy to message-level order-book replay with cancels, replaces, depth, and measured latency.
-4. Enforce arbitrage-aware volatility-surface calibration and add American-option valuation for relevant contracts.
-5. Integrate underlying hedge execution, hedge costs, and portfolio scenario limits into the event engine.
-6. Add exchange fees, rebates, clearing fees, funding, and exercise/assignment cash flows.
-7. Add experiment manifests, parameter confidence intervals, block-bootstrap uncertainty, and stability analysis.
-
-## Project status
-
-The project is under active development as a quantitative research and engineering portfolio project. The current goal is correctness, transparency of assumptions, and reproducibility—not a claim of institutional-grade or production trading infrastructure.
