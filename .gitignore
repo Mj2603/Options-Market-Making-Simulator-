@@ -2,3 +2,11 @@ __pycache__/
 .venv/
 *.pyc
 data/*.csv
+!data/sample_ticks.csv
+data/synthetic/
+data/raw/
+data/processed/
+reports/
+*.egg-info/
+.pytest_cache/
+*.log

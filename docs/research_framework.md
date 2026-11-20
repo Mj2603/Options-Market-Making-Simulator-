@@ -120,3 +120,12 @@ Greeks for every fill. The delta hedge helper returns the theoretical
 underlying quantity needed to neutralize net option delta. It does not submit
 or simulate an underlying hedge order, so hedge slippage and hedge costs are
 not included.
+
+## Running without market data (SYNTHETIC)
+
+`python scripts/run_walk_forward.py --synthetic {random_walk,informed,trending} --seed N`
+runs the same protocol on a deterministic session from
+`options_mm.data.synthetic`. `python scripts/run_synthetic_experiment.py`
+repeats it over seeds 0-19 per scenario and writes
+`results/synthetic_walkforward.{md,csv}`. These outputs are labelled synthetic
+and are not estimates of real-market performance.
